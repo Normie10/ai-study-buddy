@@ -1,15 +1,23 @@
 import json
 import os
-import time
 
 import pymupdf
 import streamlit as st
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 
 load_dotenv()
 
-MODEL = "gemini-3.8-flash"
+# Încearcă modelele în ordinea asta. Dacă unul e aglomerat sau indisponibil,
+# trece la următorul.
+MODELE = [
+    "gemini-3.8-flash",
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-flash-lite-latest",
+]
 MAX_PAGINI = 60
 
 
@@ -44,19 +52,21 @@ Reguli:
 TEXT:
 {text}"""
 
-    raspuns = None
-    for incercare in range(4):
+    ultima_eroare = None
+    for model in MODELE:
         try:
-            raspuns = client.models.generate_content(model=MODEL, contents=prompt)
-            break
+            raspuns = client.models.generate_content(model=model, contents=prompt)
+            curat = raspuns.text.replace("```json", "").replace("```", "").strip()
+            quiz = json.loads(curat)
+            return quiz, model
         except Exception as e:
-            if ("503" in str(e) or "429" in str(e)) and incercare < 3:
-                time.sleep(5 * (incercare + 1))  # așteaptă 5, 10, 15 secunde
-            else:
-                raise
+            ultima_eroare = e
+            continue  # încearcă următorul model
 
-    curat = raspuns.text.replace("```json", "").replace("```", "").strip()
-    return json.loads(curat)
+    raise RuntimeError(
+        "Toate modelele sunt indisponibile acum. Încearcă din nou peste "
+        f"câteva minute. Ultima eroare: {ultima_eroare}"
+    )
 
 
 st.title("AI Study Buddy")
@@ -66,7 +76,10 @@ if not api_key:
     st.error("Lipsește cheia API. Verifică fișierul .env sau setările Secrets.")
     st.stop()
 
-client = genai.Client(api_key=api_key)
+client = genai.Client(
+    api_key=api_key,
+    http_options=types.HttpOptions(timeout=45000),  # 45 de secunde per încercare
+)
 
 fisier = st.file_uploader("Încarcă un PDF", type="pdf")
 
@@ -88,15 +101,16 @@ if fisier:
     if st.button("Generează quiz"):
         with st.spinner("Generez quiz-ul..."):
             try:
-                st.session_state["quiz"] = genereaza_quiz(
-                    client, pagini, nr, dif, limba
-                )
+                quiz, model_folosit = genereaza_quiz(client, pagini, nr, dif, limba)
+                st.session_state["quiz"] = quiz
+                st.session_state["model"] = model_folosit
             except Exception as e:
                 st.error(f"A apărut o eroare: {e}")
 
 quiz = st.session_state.get("quiz")
 if quiz:
     st.header("Quiz")
+    st.caption(f"Generat cu: {st.session_state.get('model', '?')}")
     raspunsuri = {}
     for i, q in enumerate(quiz):
         raspunsuri[i] = st.radio(
