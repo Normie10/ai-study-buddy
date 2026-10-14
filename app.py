@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import random
+import time
 
 import pymupdf
 import streamlit as st
@@ -226,29 +227,54 @@ DOCUMENT:
 
 
 # ------------------------- teancul de elemente -------------------------
-def preia_din_teanc(cheie, nr, camp, genereaza):
-    """Întoarce (elemente_alese, model, nota).
-    Dacă nu mai sunt destule elemente nevăzute, face o cerere nouă la Google."""
+def _ia_teanc(cheie):
     dep = depozit()
     if cheie not in dep and len(dep) >= MAX_DOCUMENTE_IN_MEMORIE:
         dep.pop(next(iter(dep)))  # șterge cel mai vechi
-    teanc = dep.setdefault(cheie, {"elemente": [], "model": "?"})
+    return dep.setdefault(cheie, {"elemente": [], "model": "?"})
 
+
+def _completeaza_teanc(teanc, genereaza, camp):
+    """Face o cerere la Google și adaugă în teanc elementele noi (fără duplicate)."""
+    noi, model = genereaza()
+    teanc["model"] = model
+    existente = {_norm(e[camp]) for e in teanc["elemente"]}
+    for e in noi:
+        if _norm(e[camp]) not in existente:
+            teanc["elemente"].append(e)
+            existente.add(_norm(e[camp]))
+
+
+def _alege_din_teanc(cheie, teanc, nr):
+    """Alege nr elemente, cu prioritate pe cele pe care utilizatorul nu le-a mai văzut.
+    Întoarce (elemente, au_fost_repetari)."""
     vazute = st.session_state.setdefault("vazute", {}).setdefault(cheie, set())
+    n = len(teanc["elemente"])
+    libere = [i for i in range(n) if i not in vazute]
+    alese = random.sample(libere, min(nr, len(libere)))
+    repetate = False
+    if len(alese) < nr:
+        # nu sunt destule nevăzute: completăm din cele deja văzute
+        deja = [i for i in range(n) if i not in alese]
+        extra = random.sample(deja, min(nr - len(alese), len(deja)))
+        repetate = bool(extra)
+        alese += extra
+        vazute.clear()
+    vazute.update(alese)
+    return [dict(teanc["elemente"][i]) for i in alese], repetate
 
-    def nevazute():
-        return [i for i in range(len(teanc["elemente"])) if i not in vazute]
+
+def preia_din_teanc(cheie, nr, camp, genereaza):
+    """Întoarce (elemente_alese, model, nota).
+    Dacă nu mai sunt destule elemente nevăzute, face o cerere nouă la Google."""
+    teanc = _ia_teanc(cheie)
+    vazute = st.session_state.setdefault("vazute", {}).setdefault(cheie, set())
+    nevazute = [i for i in range(len(teanc["elemente"])) if i not in vazute]
 
     nota = "din memorie, fără cerere nouă la Google"
-    if len(nevazute()) < nr:
+    if len(nevazute) < nr:
         try:
-            noi, model = genereaza()
-            teanc["model"] = model
-            existente = {_norm(e[camp]) for e in teanc["elemente"]}
-            for e in noi:
-                if _norm(e[camp]) not in existente:
-                    teanc["elemente"].append(e)
-                    existente.add(_norm(e[camp]))
+            _completeaza_teanc(teanc, genereaza, camp)
             nota = "cerere nouă la Google"
         except Exception:
             if not teanc["elemente"]:
@@ -258,17 +284,33 @@ def preia_din_teanc(cheie, nr, camp, genereaza):
                 "așa că am refolosit elemente din memorie"
             )
 
-    libere = nevazute()
-    alese = random.sample(libere, min(nr, len(libere)))
-    if len(alese) < nr:
-        # nu sunt destule nevăzute: completăm din cele deja văzute
-        deja = [i for i in range(len(teanc["elemente"])) if i not in alese]
-        alese += random.sample(deja, min(nr - len(alese), len(deja)))
-        vazute.clear()
+    alese, repetate = _alege_din_teanc(cheie, teanc, nr)
+    if repetate:
         nota += " (unele se pot repeta)"
-    vazute.update(alese)
+    return alese, teanc["model"], nota
 
-    return [dict(teanc["elemente"][i]) for i in alese], teanc["model"], nota
+
+def preia_pentru_examen(cheie, nr, camp, genereaza):
+    """Ca preia_din_teanc, dar face o cerere la Google doar dacă teancul are mai
+    puține întrebări decât cele cerute (și nu am încercat deja pentru atâtea)."""
+    teanc = _ia_teanc(cheie)
+
+    nota = "din memorie, fără cerere nouă la Google"
+    if len(teanc["elemente"]) < nr and teanc.get("max_cerut", 0) < nr:
+        try:
+            _completeaza_teanc(teanc, genereaza, camp)
+            teanc["max_cerut"] = nr
+            nota = "cerere nouă la Google"
+        except Exception:
+            if not teanc["elemente"]:
+                raise
+            nota = (
+                "Google e aglomerat sau limita e atinsă, "
+                "așa că am folosit întrebările din memorie"
+            )
+
+    alese, _ = _alege_din_teanc(cheie, teanc, nr)
+    return alese, teanc["model"], nota
 
 
 def amesteca_variante(q):
@@ -307,6 +349,113 @@ def sterge_conversatia():
         chat["mesaje"] = []
 
 
+# ------------------------- examen -------------------------
+def formateaza_timp(secunde):
+    secunde = max(int(secunde), 0)
+    return f"{secunde // 60:02d}:{secunde % 60:02d}"
+
+
+def sterge_chei_examen():
+    """Șterge răspunsurile selectate în examenul anterior (cheile ex0, ex1, ...)."""
+    for k in list(st.session_state.keys()):
+        if k.startswith("ex") and k[2:].isdigit():
+            del st.session_state[k]
+
+
+def incheie_examen(expirat=False):
+    ex = st.session_state.get("examen")
+    if ex and ex["stare"] == "in_curs":
+        ex["raspunsuri"] = {
+            i: st.session_state.get(f"ex{i}") for i in range(len(ex["intrebari"]))
+        }
+        ex["sfarsit"] = time.time()
+        ex["expirat"] = expirat
+        ex["stare"] = "terminat"
+
+
+def examen_nou():
+    sterge_chei_examen()
+    st.session_state.pop("examen", None)
+
+
+@st.fragment(run_every=1)
+def cronometru():
+    """Se reîncarcă singur în fiecare secundă; la 0 predă examenul."""
+    ex = st.session_state.get("examen")
+    if not ex or ex["stare"] != "in_curs":
+        return
+    ramas = ex["durata"] - (time.time() - ex["start"])
+    if ramas <= 0:
+        incheie_examen(expirat=True)
+        st.rerun()
+    st.metric("Timp rămas", formateaza_timp(ramas))
+    if ramas <= 60:
+        st.warning("Mai ai sub un minut!")
+
+
+def afiseaza_rezultat(ex):
+    intrebari = ex["intrebari"]
+    total = len(intrebari)
+    scor = 0
+    pe_pagini = {}  # pagina -> [total, greșite]
+    detalii = []
+
+    for i, q in enumerate(intrebari):
+        ales = ex["raspunsuri"].get(i)
+        corect_text = q["variante"][q["corect"]]
+        ok = ales == corect_text
+        if ok:
+            scor += 1
+        pagina = str(q.get("pagina", "?"))
+        stat = pe_pagini.setdefault(pagina, [0, 0])
+        stat[0] += 1
+        if not ok:
+            stat[1] += 1
+        detalii.append((i, q, ales, ok))
+
+    procent = round(100 * scor / total)
+    folosit = ex["sfarsit"] - ex["start"]
+    fara_raspuns = sum(1 for _, _, ales, _ in detalii if ales is None)
+
+    if ex.get("expirat"):
+        st.warning("Timpul a expirat. Întrebările fără răspuns au fost socotite greșite.")
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Scor", f"{scor}/{total}")
+    c2.metric("Procent", f"{procent}%")
+    c3.metric("Timp folosit", formateaza_timp(folosit))
+    if fara_raspuns:
+        st.caption(f"Ai lăsat {fara_raspuns} întrebări fără răspuns.")
+
+    st.subheader("Ce să recapitulezi")
+    de_recapitulat = sorted(
+        [(p, t, g) for p, (t, g) in pe_pagini.items() if g > 0],
+        key=lambda x: (-x[2], -x[2] / x[1]),
+    )
+    if not de_recapitulat:
+        st.success("Ai răspuns corect la toate întrebările. Bravo!")
+    else:
+        for p, t, g in de_recapitulat:
+            eticheta = "Pagina necunoscută" if p == "?" else f"Pagina {p}"
+            cuvinte = "întrebare greșită" if t == 1 else "întrebări greșite"
+            st.markdown(f"- **{eticheta}**: {g} din {t} {cuvinte}")
+        st.caption(
+            "Paginile sunt cele indicate de model pentru fiecare întrebare. "
+            "Verifică-le în document."
+        )
+
+    with st.expander("Vezi toate întrebările și răspunsurile"):
+        for i, q, ales, ok in detalii:
+            semn = "✅" if ok else "❌"
+            st.markdown(f"**{semn} {i + 1}. {q['intrebare']}**")
+            st.write(f"Răspunsul tău: {ales if ales else 'fără răspuns'}")
+            if not ok:
+                st.write(f"Răspuns corect: {q['variante'][q['corect']]}")
+            st.caption(f"{q['explicatie']} (pagina {q['pagina']})")
+
+    st.button("Examen nou", on_click=examen_nou)
+
+
 # ------------------------- interfața -------------------------
 st.title("AI Study Buddy")
 
@@ -335,8 +484,8 @@ if fisier:
     hash_pdf = hashlib.sha256(fisier.getvalue()).hexdigest()
     limba = st.selectbox("Limba", ["română", "engleză"])
 
-    tab_quiz, tab_carduri, tab_rezumat, tab_intreaba = st.tabs(
-        ["Quiz", "Flashcarduri", "Rezumat", "Întreabă"]
+    tab_quiz, tab_examen, tab_carduri, tab_rezumat, tab_intreaba = st.tabs(
+        ["Quiz", "Examen", "Flashcarduri", "Rezumat", "Întreabă"]
     )
 
     # ---------------- QUIZ ----------------
@@ -388,6 +537,77 @@ if fisier:
                         st.error(f"{i + 1}. Greșit. Răspuns corect: {corect}")
                     st.caption(f"{q['explicatie']} (pagina {q['pagina']})")
                 st.subheader(f"Scor: {scor}/{len(quiz)}")
+
+    # ---------------- EXAMEN ----------------
+    with tab_examen:
+        ex = st.session_state.get("examen")
+        if ex and ex["hash"] != hash_pdf:
+            # s-a schimbat documentul: începem de la zero
+            sterge_chei_examen()
+            st.session_state.pop("examen", None)
+            ex = None
+
+        if ex is None:
+            st.write(
+                "Un test cu cronometru. La final primești scorul și un raport cu "
+                "paginile la care ai greșit cel mai mult."
+            )
+            c1, c2, c3 = st.columns(3)
+            nr_ex = c1.number_input("Număr întrebări", 5, 30, 10, key="ex_nr")
+            dif_ex = c2.selectbox(
+                "Dificultate", ["ușoară", "medie", "grea"], index=1, key="ex_dif"
+            )
+            minute = c3.number_input("Timp (minute)", 1, 90, 15, key="ex_min")
+
+            pornit = False
+            if st.button("Începe examenul"):
+                with st.spinner("Pregătesc examenul..."):
+                    try:
+                        elemente, model_folosit, nota = preia_pentru_examen(
+                            ("quiz", hash_pdf, dif_ex, limba),
+                            nr_ex,
+                            "intrebare",
+                            lambda: genereaza_teanc_quiz(client, pagini, dif_ex, limba),
+                        )
+                        sterge_chei_examen()
+                        st.session_state["examen"] = {
+                            "hash": hash_pdf,
+                            "stare": "in_curs",
+                            "intrebari": [amesteca_variante(q) for q in elemente],
+                            "cerute": nr_ex,
+                            "durata": int(minute * 60),
+                            "info": f"{model_folosit} · {nota}",
+                            "start": time.time(),  # pornește după generare
+                        }
+                        pornit = True
+                    except Exception as e:
+                        st.error(f"A apărut o eroare: {e}")
+            if pornit:
+                st.rerun()
+
+        elif ex["stare"] == "in_curs":
+            if time.time() - ex["start"] >= ex["durata"]:
+                incheie_examen(expirat=True)
+                st.rerun()
+
+            cronometru()
+            st.caption(f"Model: {ex['info']}")
+            if len(ex["intrebari"]) < ex["cerute"]:
+                st.info(
+                    f"Am găsit doar {len(ex['intrebari'])} întrebări distincte în "
+                    "document, așa că examenul are mai puține decât ai cerut."
+                )
+            for i, q in enumerate(ex["intrebari"]):
+                st.radio(
+                    f"{i + 1}. {q['intrebare']}",
+                    q["variante"],
+                    index=None,
+                    key=f"ex{i}",
+                )
+            st.button("Predă examenul", on_click=incheie_examen)
+
+        else:  # terminat
+            afiseaza_rezultat(ex)
 
     # ------------- FLASHCARDURI -------------
     with tab_carduri:
