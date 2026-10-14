@@ -485,14 +485,13 @@ if fisier:
     # ---------------- ÎNTREABĂ ----------------
     with tab_intreaba:
         chat = chat_curent(hash_pdf)
-        ramase = MAX_INTREBARI_SESIUNE - chat["folosite"]
 
         st.write(
             "Scrie o întrebare sau un concept pe care nu-l înțelegi și primești "
             "o explicație bazată doar pe documentul încărcat."
         )
-        st.caption(f"Întrebări rămase în această sesiune: {max(ramase, 0)}")
-
+        # loc rezervat: contorul se completează după procesarea întrebării
+        contor = st.empty()
         zona_chat = st.container()
 
         with st.form("form_intreaba", clear_on_submit=True):
@@ -505,6 +504,7 @@ if fisier:
 
         if trimis and intrebare.strip():
             intrebare = intrebare.strip()
+            ramase = MAX_INTREBARI_SESIUNE - chat["folosite"]
             primul = len(chat["mesaje"]) == 0
             cheie_q = ("intreaba", hash_pdf, limba, _norm(intrebare))
             dep = depozit()
@@ -544,6 +544,10 @@ if fisier:
                             dep[cheie_q] = {"text": raspuns, "model": model_folosit}
                     except Exception as e:
                         st.error(f"A apărut o eroare: {e}")
+
+        # afișăm contorul abia acum, după ce întrebarea a fost procesată
+        ramase_acum = MAX_INTREBARI_SESIUNE - chat["folosite"]
+        contor.caption(f"Întrebări rămase în această sesiune: {max(ramase_acum, 0)}")
 
         with zona_chat:
             for m in chat["mesaje"]:
