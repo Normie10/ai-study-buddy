@@ -20,6 +20,12 @@ MODELE = [
 ]
 MAX_PAGINI = 60
 
+NIVELE_REZUMAT = {
+    "scurt": "foarte scurt, cam 150 de cuvinte",
+    "mediu": "de lungime medie, cam 350 de cuvinte",
+    "detaliat": "detaliat, cam 700 de cuvinte",
+}
+
 
 def cheie_api():
     cheie = os.getenv("GOOGLE_API_KEY")
@@ -40,14 +46,19 @@ def text_din_pagini(pagini):
     return "\n\n".join(f"[Pagina {p['pagina']}]\n{p['text']}" for p in pagini)
 
 
-def cere_json(client, prompt):
-    """Trimite promptul la model și întoarce (rezultat_json, model_folosit)."""
+def _parse_json(text):
+    curat = text.replace("```json", "").replace("```", "").strip()
+    return json.loads(curat)
+
+
+def cere_model(client, prompt, prelucrare):
+    """Trimite promptul pe rând la fiecare model, până unul răspunde bine.
+    Întoarce (rezultat, model_folosit)."""
     ultima_eroare = None
     for model in MODELE:
         try:
             raspuns = client.models.generate_content(model=model, contents=prompt)
-            curat = raspuns.text.replace("```json", "").replace("```", "").strip()
-            return json.loads(curat), model
+            return prelucrare(raspuns.text), model
         except Exception as e:
             ultima_eroare = e
             continue  # încearcă următorul model
@@ -72,7 +83,7 @@ Reguli:
 
 TEXT:
 {text_din_pagini(pagini)}"""
-    return cere_json(client, prompt)
+    return cere_model(client, prompt, _parse_json)
 
 
 def genereaza_carduri(client, pagini, nr_carduri, limba):
@@ -90,7 +101,25 @@ Reguli:
 
 TEXT:
 {text_din_pagini(pagini)}"""
-    return cere_json(client, prompt)
+    return cere_model(client, prompt, _parse_json)
+
+
+def genereaza_rezumat(client, pagini, nivel, limba):
+    prompt = f"""Ești un profesor care face rezumate pentru elevi.
+Pe baza TEXTULUI de mai jos, scrie un rezumat în limba {limba}, {NIVELE_REZUMAT[nivel]}.
+
+Reguli:
+- Folosește DOAR informații din text.
+- Începe cu 1-2 propoziții care spun despre ce este documentul.
+- Apoi prezintă ideile importante, grupate pe teme, cu titluri scurte
+  (format Markdown, folosind ### pentru titluri și liste cu puncte).
+- La finalul fiecărei idei indică pagina sursă în paranteză, de exemplu (p. 3).
+- Încheie cu o secțiune „De reținut", cu 3-5 puncte esențiale.
+- Răspunde doar cu rezumatul, fără introduceri de genul „Iată rezumatul".
+
+TEXT:
+{text_din_pagini(pagini)}"""
+    return cere_model(client, prompt, lambda t: t.strip())
 
 
 def schimba_card(pas, total):
@@ -129,7 +158,7 @@ if fisier:
 
     limba = st.selectbox("Limba", ["română", "engleză"])
 
-    tab_quiz, tab_carduri = st.tabs(["Quiz", "Flashcarduri"])
+    tab_quiz, tab_carduri, tab_rezumat = st.tabs(["Quiz", "Flashcarduri", "Rezumat"])
 
     # ---------------- QUIZ ----------------
     with tab_quiz:
@@ -224,4 +253,30 @@ if fisier:
                 on_click=schimba_card,
                 args=(1, total),
                 disabled=(idx == total - 1),
+            )
+
+    # ---------------- REZUMAT ----------------
+    with tab_rezumat:
+        nivel = st.selectbox("Cât de detaliat?", list(NIVELE_REZUMAT.keys()), index=1)
+
+        if st.button("Generează rezumat"):
+            with st.spinner("Generez rezumatul..."):
+                try:
+                    rezumat, model_folosit = genereaza_rezumat(
+                        client, pagini, nivel, limba
+                    )
+                    st.session_state["rezumat"] = rezumat
+                    st.session_state["model_rezumat"] = model_folosit
+                except Exception as e:
+                    st.error(f"A apărut o eroare: {e}")
+
+        rezumat = st.session_state.get("rezumat")
+        if rezumat:
+            st.caption(f"Generat cu: {st.session_state.get('model_rezumat', '?')}")
+            st.markdown(rezumat)
+            st.download_button(
+                "Descarcă rezumatul (.txt)",
+                data=rezumat,
+                file_name="rezumat.txt",
+                mime="text/plain",
             )
