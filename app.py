@@ -3,6 +3,7 @@ import json
 import os
 import random
 import time
+from html import escape as esc
 
 import pymupdf
 import streamlit as st
@@ -349,6 +350,117 @@ def sterge_conversatia():
         chat["mesaje"] = []
 
 
+# ------------------------- fișiere de descărcat (HTML pentru printat) -------------------------
+CSS_PRINT = """
+body { font-family: Arial, Helvetica, sans-serif; max-width: 800px;
+       margin: 24px auto; padding: 0 16px; color: #111; line-height: 1.5; }
+h1 { font-size: 24px; margin-bottom: 4px; }
+h2 { font-size: 18px; margin-top: 28px; }
+.intrebare { margin: 16px 0; page-break-inside: avoid; }
+.intrebare p { margin: 0 0 6px 0; font-weight: bold; }
+.varianta { margin: 2px 0 2px 18px; }
+.cheie { page-break-before: always; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #888; padding: 8px; vertical-align: top; text-align: left; }
+th { background: #eee; }
+tr { page-break-inside: avoid; }
+.ok { color: #136f2b; }
+.gresit { color: #b00020; }
+.mic { color: #555; font-size: 13px; }
+.nu-print { padding: 8px 14px; margin-bottom: 16px; font-size: 14px; cursor: pointer; }
+@media print {
+  .nu-print { display: none; }
+  body { margin: 0; max-width: none; }
+}
+"""
+
+
+def e(valoare):
+    """Escapare pentru HTML (ca textul din PDF să nu strice pagina)."""
+    return esc(str(valoare))
+
+
+def html_pagina(titlu, corp):
+    return f"""<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<title>{e(titlu)}</title>
+<style>{CSS_PRINT}</style>
+</head>
+<body>
+<button class="nu-print" onclick="window.print()">Tipărește / Salvează ca PDF</button>
+<h1>{e(titlu)}</h1>
+{corp}
+</body>
+</html>"""
+
+
+def html_quiz(quiz):
+    litere = "ABCD"
+    parti = ['<p class="mic">Nume: ______________ &nbsp; Data: ______________</p>']
+    for i, q in enumerate(quiz, start=1):
+        parti.append('<div class="intrebare">')
+        parti.append(f"<p>{i}. {e(q['intrebare'])}</p>")
+        for j, v in enumerate(q["variante"]):
+            parti.append(f'<div class="varianta">&#9744; {litere[j]}. {e(v)}</div>')
+        parti.append("</div>")
+
+    parti.append('<div class="cheie"><h2>Răspunsuri corecte</h2>')
+    for i, q in enumerate(quiz, start=1):
+        corect = q["corect"]
+        parti.append(
+            f"<p>{i}. <b>{litere[corect]}. {e(q['variante'][corect])}</b> "
+            f"<span class=\"mic\">(pagina {e(q['pagina'])}) {e(q['explicatie'])}</span></p>"
+        )
+    parti.append("</div>")
+    return html_pagina("Quiz", "\n".join(parti))
+
+
+def html_carduri(carduri):
+    randuri = [
+        "<table><tr><th>#</th><th>Întrebare</th><th>Răspuns</th><th>Pagina</th></tr>"
+    ]
+    for i, c in enumerate(carduri, start=1):
+        randuri.append(
+            f"<tr><td>{i}</td><td>{e(c['fata'])}</td>"
+            f"<td>{e(c['spate'])}</td><td>{e(c['pagina'])}</td></tr>"
+        )
+    randuri.append("</table>")
+    return html_pagina("Flashcarduri", "\n".join(randuri))
+
+
+def html_examen(scor, total, procent, folosit, de_recapitulat, detalii):
+    parti = [
+        f"<p><b>Scor:</b> {scor}/{total} ({procent}%) &nbsp; "
+        f"<b>Timp folosit:</b> {formateaza_timp(folosit)}</p>",
+        "<h2>Ce să recapitulezi</h2>",
+    ]
+    if not de_recapitulat:
+        parti.append("<p>Ai răspuns corect la toate întrebările.</p>")
+    else:
+        parti.append("<ul>")
+        for p, t, g in de_recapitulat:
+            eticheta = "Pagina necunoscută" if p == "?" else f"Pagina {p}"
+            parti.append(f"<li><b>{e(eticheta)}</b>: {g} din {t} greșite</li>")
+        parti.append("</ul>")
+
+    parti.append("<h2>Întrebările</h2>")
+    for i, q, ales, ok in detalii:
+        clasa = "ok" if ok else "gresit"
+        semn = "&#10004;" if ok else "&#10008;"
+        parti.append('<div class="intrebare">')
+        parti.append(f'<p class="{clasa}">{semn} {i + 1}. {e(q["intrebare"])}</p>')
+        parti.append(f"<div>Răspunsul tău: {e(ales) if ales else 'fără răspuns'}</div>")
+        if not ok:
+            parti.append(f"<div>Răspuns corect: {e(q['variante'][q['corect']])}</div>")
+        parti.append(
+            f'<div class="mic">{e(q["explicatie"])} (pagina {e(q["pagina"])})</div>'
+        )
+        parti.append("</div>")
+    return html_pagina("Rezultate examen", "\n".join(parti))
+
+
 # ------------------------- examen -------------------------
 def formateaza_timp(secunde):
     secunde = max(int(secunde), 0)
@@ -453,6 +565,14 @@ def afiseaza_rezultat(ex):
                 st.write(f"Răspuns corect: {q['variante'][q['corect']]}")
             st.caption(f"{q['explicatie']} (pagina {q['pagina']})")
 
+    st.download_button(
+        "Descarcă rezultatele pentru printat (.html)",
+        data=html_examen(scor, total, procent, folosit, de_recapitulat, detalii),
+        file_name="examen_rezultate.html",
+        mime="text/html",
+        on_click="ignore",
+        key="dl_examen",
+    )
     st.button("Examen nou", on_click=examen_nou)
 
 
@@ -510,13 +630,21 @@ if fisier:
                             del st.session_state[k]
                     st.session_state["quiz"] = quiz
                     st.session_state["info_quiz"] = f"{model_folosit} · {nota}"
-                except Exception as e:
-                    st.error(f"A apărut o eroare: {e}")
+                except Exception as e_quiz:
+                    st.error(f"A apărut o eroare: {e_quiz}")
 
         quiz = st.session_state.get("quiz")
         if quiz:
             st.header("Quiz")
             st.caption(f"Model: {st.session_state.get('info_quiz', '?')}")
+            st.download_button(
+                "Descarcă quiz-ul pentru printat (.html)",
+                data=html_quiz(quiz),
+                file_name="quiz.html",
+                mime="text/html",
+                on_click="ignore",
+                key="dl_quiz",
+            )
             raspunsuri = {}
             for i, q in enumerate(quiz):
                 raspunsuri[i] = st.radio(
@@ -580,8 +708,8 @@ if fisier:
                             "start": time.time(),  # pornește după generare
                         }
                         pornit = True
-                    except Exception as e:
-                        st.error(f"A apărut o eroare: {e}")
+                    except Exception as e_ex:
+                        st.error(f"A apărut o eroare: {e_ex}")
             if pornit:
                 st.rerun()
 
@@ -626,8 +754,8 @@ if fisier:
                     st.session_state["info_carduri"] = f"{model_folosit} · {nota}"
                     st.session_state["card_idx"] = 0
                     st.session_state["card_arata"] = False
-                except Exception as e:
-                    st.error(f"A apărut o eroare: {e}")
+                except Exception as e_card:
+                    st.error(f"A apărut o eroare: {e_card}")
 
         carduri = st.session_state.get("carduri")
         if carduri:
@@ -638,6 +766,14 @@ if fisier:
             st.caption(
                 f"Card {idx + 1} din {total} · "
                 f"Model: {st.session_state.get('info_carduri', '?')}"
+            )
+            st.download_button(
+                "Descarcă flashcardurile pentru printat (.html)",
+                data=html_carduri(carduri),
+                file_name="flashcarduri.html",
+                mime="text/html",
+                on_click="ignore",
+                key="dl_carduri",
             )
             with st.container(border=True):
                 st.markdown("**Întrebare**")
@@ -688,8 +824,8 @@ if fisier:
                         st.session_state["info_rezumat"] = (
                             f"{model_folosit} · cerere nouă la Google"
                         )
-                    except Exception as e:
-                        st.error(f"A apărut o eroare: {e}")
+                    except Exception as e_rez:
+                        st.error(f"A apărut o eroare: {e_rez}")
 
         rezumat = st.session_state.get("rezumat")
         if rezumat:
@@ -700,6 +836,8 @@ if fisier:
                 data=rezumat,
                 file_name="rezumat.txt",
                 mime="text/plain",
+                on_click="ignore",
+                key="dl_rezumat",
             )
 
     # ---------------- ÎNTREABĂ ----------------
@@ -762,8 +900,8 @@ if fisier:
                             if len(dep) >= MAX_DOCUMENTE_IN_MEMORIE:
                                 dep.pop(next(iter(dep)))
                             dep[cheie_q] = {"text": raspuns, "model": model_folosit}
-                    except Exception as e:
-                        st.error(f"A apărut o eroare: {e}")
+                    except Exception as e_chat:
+                        st.error(f"A apărut o eroare: {e_chat}")
 
         # afișăm contorul abia acum, după ce întrebarea a fost procesată
         ramase_acum = MAX_INTREBARI_SESIUNE - chat["folosite"]
