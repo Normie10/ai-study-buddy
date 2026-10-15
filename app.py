@@ -18,6 +18,13 @@ from google.genai import types
 
 load_dotenv()
 
+# Trebuie să fie prima comandă Streamlit din script
+st.set_page_config(
+    page_title="AI Study Buddy",
+    page_icon="📚",
+    layout="centered",
+)
+
 # Încearcă modelele în ordinea asta. Dacă unul e aglomerat sau epuizat,
 # trece la următorul.
 MODELE = [
@@ -99,6 +106,92 @@ DISCLAIMER_SAT = (
     "400-1600. Pentru întrebări oficiale, folosește testele de practică gratuite "
     "de la College Board (aplicația Bluebook)."
 )
+
+# ------------------------- aspect: texte și stil -------------------------
+DESCRIERI_TAB = {
+    "quiz": (
+        "Întrebări grilă din materialul tău, cu explicații și sursa fiecărui "
+        "răspuns. Poți descărca quiz-ul pentru printat."
+    ),
+    "examen": (
+        "Un test cu cronometru. La final primești scorul și un raport cu locurile "
+        "din document la care ai greșit cel mai mult."
+    ),
+    "carduri": (
+        "Flashcarduri cu repetare: apeși „Știu” sau „Nu știu”, iar cardurile "
+        "greșite revin până le înveți."
+    ),
+    "rezumat": (
+        "Rezumat scurt, mediu sau detaliat, cu sursele ideilor, pe care îl poți "
+        "descărca."
+    ),
+    "intreaba": (
+        "Pune o întrebare despre un concept pe care nu-l înțelegi și primești o "
+        "explicație simplă, bazată doar pe documentul tău."
+    ),
+}
+
+CSS_APP = """
+<style>
+.block-container, [data-testid="stMainBlockContainer"] {
+    padding-top: 2.5rem;
+    padding-bottom: 4rem;
+}
+[data-testid="stBaseButton-primary"], [data-testid="stBaseButton-secondary"],
+button[kind="primary"], button[kind="secondary"] {
+    border-radius: 10px;
+}
+[data-testid="stTabs"] button[role="tab"] {
+    font-weight: 600;
+}
+@media (max-width: 640px) {
+    h1 { font-size: 1.7rem !important; }
+    [data-testid="stMetricValue"] { font-size: 1.5rem; }
+}
+</style>
+"""
+
+
+def afiseaza_ghid():
+    st.markdown(
+        """
+**Cum folosești aplicația**
+
+1. **Alege materialul**: încarcă un PDF, un document Word sau un fișier text, ori
+   lipește text cu Ctrl+V. La documentele lungi alegi partea pe care vrei s-o
+   înveți (de exemplu un capitol).
+2. **Alege ce vrei să faci** din taburile de mai jos.
+3. **Învață și verifică**: răspunsurile arată de unde vin în document (pagina sau
+   secțiunea), ca să poți verifica.
+
+**Ce găsești în aplicație**
+
+- 📝 **Quiz**: întrebări grilă cu explicații, care se pot printa.
+- ⏱️ **Examen**: test cu cronometru și raport cu locurile la care ai greșit.
+- 🗂️ **Flashcarduri**: cu repetare, cardurile greșite revin până le știi.
+- 📄 **Rezumat**: scurt, mediu sau detaliat.
+- 💬 **Întreabă**: explicații simple, din documentul tău.
+- 🎓 **SAT**: întrebări în stilul SAT-ului digital, **fără document**. Merge direct,
+  nu trebuie să încarci nimic.
+
+**Bine de știut**
+
+- AI-ul poate greși. Verifică mereu sursa indicată.
+- Aplicația folosește o limită gratuită, comună tuturor utilizatorilor. Dacă apare
+  un mesaj că modelele sunt indisponibile sau limita e atinsă, încearcă mai târziu.
+"""
+    )
+
+
+def afiseaza_footer():
+    st.divider()
+    st.caption(
+        "AI Study Buddy · Conținutul e generat de AI și poate conține greșeli. "
+        "Textul din documentele tale este trimis la Google pentru generare, deci nu "
+        "încărca materiale private. Pentru a economisi cereri, serverul păstrează "
+        "temporar în memorie întrebările generate și textul extras din ultimele "
+        "documente, până la repornirea aplicației."
+    )
 
 
 # ------------------------- cheie API -------------------------
@@ -1242,7 +1335,15 @@ def afiseaza_examen(nume, context, formular):
 
 
 # ------------------------- interfața -------------------------
-st.title("AI Study Buddy")
+st.markdown(CSS_APP, unsafe_allow_html=True)
+st.title("📚 AI Study Buddy")
+st.caption(
+    "Transformă materialele tale în quiz-uri, teste cu cronometru, flashcarduri "
+    "și rezumate."
+)
+
+# loc rezervat pentru ghid: îl completăm după ce știm dacă există un material
+zona_intro = st.container()
 
 api_key = cheie_api()
 if not api_key:
@@ -1254,75 +1355,97 @@ client = genai.Client(
     http_options=types.HttpOptions(timeout=90000),  # 90 de secunde per încercare
 )
 
-limba = st.selectbox(
-    "Limba (pentru material și pentru explicațiile de la SAT)", ["română", "engleză"]
-)
-
-# ---------------- materialul: fișier sau text lipit ----------------
-sursa = st.radio(
-    "Materialul tău (pentru tot, în afară de SAT)",
-    ["Încarcă un fișier", "Lipește text"],
-    horizontal=True,
-    key="sursa_material",
-)
-
+# ---------------- pasul 1: materialul ----------------
 mat = None
-if sursa == "Încarcă un fișier":
-    fisier = st.file_uploader(
-        "PDF, Word (.docx) sau text (.txt, .md)", type=["pdf", "docx", "txt", "md"]
-    )
-    if fisier:
-        try:
-            mat = material_din_fisier(fisier)
-        except Exception as e_fis:
-            st.error(f"Nu am putut citi fișierul: {e_fis}")
-else:
-
-    def sterge_textul():
-        st.session_state["text_lipit"] = ""
-        st.session_state["caseta_text"] = ""
-
-    with st.form("form_text"):
-        text_nou = st.text_area(
-            f"Lipește aici textul (Ctrl+V). Maximum {fmt(MAX_CARACTERE_LIPIT)} de caractere.",
-            height=250,
-            max_chars=MAX_CARACTERE_LIPIT,
-            key="caseta_text",
-        )
-        trimis_text = st.form_submit_button("Folosește acest text")
-    if trimis_text:
-        st.session_state["text_lipit"] = text_nou
-
-    text_curent = st.session_state.get("text_lipit", "")
-    if text_curent.strip():
-        mat = material_din_text(text_curent)
-        st.button("Șterge textul", on_click=sterge_textul)
-
-if mat is not None:
-    if sum(len(u["text"].strip()) for u in mat["unitati"]) < 50:
-        st.error(
-            "Nu am găsit text în document. Dacă e un PDF scanat (poze cu text), "
-            "momentan nu pot citi text din imagini."
-        )
-        mat = None
-
 selectate = None
 hash_material = None
-if mat is not None:
-    n_unitati = len(mat["unitati"])
-    total_caractere = sum(len(u["text"]) for u in mat["unitati"])
-    st.success(
-        f"{mat['nume']}: {n_unitati} {PLURAL[mat['eticheta']]}, "
-        f"aproximativ {fmt(total_caractere)} de caractere"
-    )
-    selectate, hash_material = alege_interval(mat)
 
-    if st.session_state.get("hash_material") != hash_material:
-        curata_rezultate()
-        st.session_state["hash_material"] = hash_material
+with st.container(border=True):
+    st.subheader("1. Alege materialul")
+
+    limba = st.selectbox(
+        "Limba întrebărilor și a explicațiilor",
+        ["română", "engleză"],
+        help="La SAT, întrebările rămân în engleză; explicațiile urmează această limbă.",
+    )
+
+    sursa = st.radio(
+        "De unde iei materialul? (nu e nevoie pentru SAT)",
+        ["Încarcă un fișier", "Lipește text"],
+        horizontal=True,
+        key="sursa_material",
+    )
+
+    if sursa == "Încarcă un fișier":
+        fisier = st.file_uploader(
+            "PDF, Word (.docx) sau text (.txt, .md)",
+            type=["pdf", "docx", "txt", "md"],
+        )
+        if fisier:
+            try:
+                mat = material_din_fisier(fisier)
+            except Exception as e_fis:
+                st.error(f"Nu am putut citi fișierul: {e_fis}")
+    else:
+
+        def sterge_textul():
+            st.session_state["text_lipit"] = ""
+            st.session_state["caseta_text"] = ""
+
+        with st.form("form_text"):
+            text_nou = st.text_area(
+                f"Lipește aici textul (Ctrl+V). Maximum {fmt(MAX_CARACTERE_LIPIT)} de caractere.",
+                height=250,
+                max_chars=MAX_CARACTERE_LIPIT,
+                key="caseta_text",
+            )
+            trimis_text = st.form_submit_button("Folosește acest text")
+        if trimis_text:
+            st.session_state["text_lipit"] = text_nou
+
+        text_curent = st.session_state.get("text_lipit", "")
+        if text_curent.strip():
+            mat = material_din_text(text_curent)
+            st.button("Șterge textul", on_click=sterge_textul)
+
+    if mat is not None:
+        if sum(len(u["text"].strip()) for u in mat["unitati"]) < 50:
+            st.error(
+                "Nu am găsit text în document. Dacă e un PDF scanat (poze cu text), "
+                "momentan nu pot citi text din imagini."
+            )
+            mat = None
+
+    if mat is not None:
+        n_unitati = len(mat["unitati"])
+        total_caractere = sum(len(u["text"]) for u in mat["unitati"])
+        st.success(
+            f"{mat['nume']}: {n_unitati} {PLURAL[mat['eticheta']]}, "
+            f"aproximativ {fmt(total_caractere)} de caractere"
+        )
+        selectate, hash_material = alege_interval(mat)
+
+        if st.session_state.get("hash_material") != hash_material:
+            curata_rezultate()
+            st.session_state["hash_material"] = hash_material
+
+# ghidul: deschis pentru cine intră prima oară, închis după ce există un material
+with zona_intro:
+    with st.expander("Cum funcționează?", expanded=(mat is None)):
+        afiseaza_ghid()
+
+# ---------------- pasul 2: ce vrei să faci ----------------
+st.subheader("2. Alege ce vrei să faci")
 
 tab_quiz, tab_examen, tab_sat, tab_carduri, tab_rezumat, tab_intreaba = st.tabs(
-    ["Quiz", "Examen", "SAT", "Flashcarduri", "Rezumat", "Întreabă"]
+    [
+        "📝 Quiz",
+        "⏱️ Examen",
+        "🎓 SAT",
+        "🗂️ Flashcarduri",
+        "📄 Rezumat",
+        "💬 Întreabă",
+    ]
 )
 
 # ---------------- SAT (nu are nevoie de document) ----------------
@@ -1380,12 +1503,19 @@ with tab_sat:
 
 # ---------------- restul funcțiilor cer un material ----------------
 if mat is None or selectate is None:
-    for tab in (tab_quiz, tab_examen, tab_carduri, tab_rezumat, tab_intreaba):
+    for tab, cheie_tab in (
+        (tab_quiz, "quiz"),
+        (tab_examen, "examen"),
+        (tab_carduri, "carduri"),
+        (tab_rezumat, "rezumat"),
+        (tab_intreaba, "intreaba"),
+    ):
         with tab:
             st.info(
-                "Încarcă un document (sau lipește text) mai sus ca să folosești "
-                "această funcție."
+                f"{DESCRIERI_TAB[cheie_tab]}\n\n"
+                "Încarcă un document (sau lipește text) la pasul 1 ca să începi."
             )
+    afiseaza_footer()
     st.stop()
 
 eticheta_mat = mat["eticheta"]
@@ -1758,3 +1888,5 @@ with tab_intreaba:
         st.caption(
             "Răspunsurile pot conține greșeli. Verifică sursa indicată în document."
         )
+
+afiseaza_footer()
