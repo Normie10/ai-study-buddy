@@ -336,8 +336,7 @@ def curata_rezultate():
         "info_quiz",
         "carduri",
         "info_carduri",
-        "card_idx",
-        "card_arata",
+        "studiu",
         "rezumat",
         "info_rezumat",
     ):
@@ -845,15 +844,39 @@ def amesteca_variante(q):
     return q
 
 
-# ------------------------- carduri: navigare -------------------------
-def schimba_card(pas, total):
-    idx = st.session_state.get("card_idx", 0) + pas
-    st.session_state["card_idx"] = max(0, min(total - 1, idx))
-    st.session_state["card_arata"] = False
+# ------------------------- flashcarduri: mod studiu (repetare) -------------------------
+def porneste_studiu(n, ids=None):
+    """Începe o sesiune de studiu. `ids` = indicii cardurilor de studiat
+    (implicit toate, de la 0 la n-1). Cardurile se amestecă."""
+    ids = list(range(n)) if ids is None else list(ids)
+    random.shuffle(ids)
+    st.session_state["studiu"] = {
+        "ids": list(ids),  # cardurile acestei sesiuni
+        "coada": list(ids),  # ce a mai rămas de învățat (fiecare card o singură dată)
+        "gresite": {},  # card -> de câte ori am greșit
+        "incercari": 0,
+        "arata": False,
+    }
 
 
-def arata_raspuns():
-    st.session_state["card_arata"] = True
+def arata_raspuns_card():
+    s = st.session_state.get("studiu")
+    if s:
+        s["arata"] = True
+
+
+def raspunde_card(stiu):
+    """'Știu' scoate cardul din coadă; 'Nu știu' îl pune înapoi, la câteva
+    carduri distanță, ca să revină curând."""
+    s = st.session_state.get("studiu")
+    if not s or not s["coada"]:
+        return
+    i = s["coada"].pop(0)
+    s["incercari"] += 1
+    if not stiu:
+        s["gresite"][i] = s["gresite"].get(i, 0) + 1
+        s["coada"].insert(min(3, len(s["coada"])), i)
+    s["arata"] = False
 
 
 # ------------------------- chat: stare -------------------------
@@ -1469,7 +1492,7 @@ with tab_examen:
 
     afiseaza_examen("examen", hash_material, formular_examen)
 
-# ------------- FLASHCARDURI -------------
+# ------------- FLASHCARDURI (cu repetare) -------------
 with tab_carduri:
     nr_carduri = st.number_input("Număr flashcarduri", 5, 20, 10)
 
@@ -1486,21 +1509,22 @@ with tab_carduri:
                 )
                 st.session_state["carduri"] = carduri
                 st.session_state["info_carduri"] = f"{model_folosit} · {nota}"
-                st.session_state["card_idx"] = 0
-                st.session_state["card_arata"] = False
+                porneste_studiu(len(carduri))
             except Exception as e_card:
                 st.error(f"A apărut o eroare: {e_card}")
 
     carduri = st.session_state.get("carduri")
     if carduri:
-        total = len(carduri)
-        idx = min(st.session_state.get("card_idx", 0), total - 1)
-        card = carduri[idx]
+        studiu = st.session_state.get("studiu")
+        if not studiu or max(studiu["ids"], default=-1) >= len(carduri):
+            porneste_studiu(len(carduri))
+            studiu = st.session_state["studiu"]
 
-        st.caption(
-            f"Card {idx + 1} din {total} · "
-            f"Model: {st.session_state.get('info_carduri', '?')}"
-        )
+        total_s = len(studiu["ids"])
+        ramase = len(studiu["coada"])
+        retinute = total_s - ramase
+
+        st.caption(f"Model: {st.session_state.get('info_carduri', '?')}")
         st.download_button(
             "Descarcă flashcardurile pentru printat (.html)",
             data=html_carduri(carduri),
@@ -1509,32 +1533,89 @@ with tab_carduri:
             on_click="ignore",
             key="dl_carduri",
         )
-        with st.container(border=True):
-            st.markdown("**Întrebare**")
-            st.subheader(card.get("fata", ""))
-            if st.session_state.get("card_arata"):
-                st.divider()
-                st.markdown("**Răspuns**")
-                st.write(card.get("spate", ""))
-                st.caption(
-                    f"{card.get('unitate', 'pagina').capitalize()} "
-                    f"{card.get('pagina', '?')}"
-                )
+        st.progress(
+            retinute / total_s if total_s else 1.0,
+            text=f"Ai reținut {retinute} din {total_s} carduri",
+        )
 
-        c1, c2, c3 = st.columns(3)
-        c1.button(
-            "← Înapoi",
-            on_click=schimba_card,
-            args=(-1, total),
-            disabled=(idx == 0),
-        )
-        c2.button("Arată răspunsul", on_click=arata_raspuns)
-        c3.button(
-            "Următorul →",
-            on_click=schimba_card,
-            args=(1, total),
-            disabled=(idx == total - 1),
-        )
+        if studiu["coada"]:
+            i = studiu["coada"][0]
+            card = carduri[i]
+            greseli = studiu["gresite"].get(i, 0)
+
+            with st.container(border=True):
+                if greseli:
+                    st.caption("Revine pentru că ai greșit-o înainte")
+                st.markdown("**Întrebare**")
+                st.subheader(card.get("fata", ""))
+                if studiu["arata"]:
+                    st.divider()
+                    st.markdown("**Răspuns**")
+                    st.write(card.get("spate", ""))
+                    st.caption(
+                        f"{card.get('unitate', 'pagina').capitalize()} "
+                        f"{card.get('pagina', '?')}"
+                    )
+
+            if not studiu["arata"]:
+                st.button(
+                    "Arată răspunsul",
+                    on_click=arata_raspuns_card,
+                    key="sr_arata",
+                    use_container_width=True,
+                )
+            else:
+                b1, b2 = st.columns(2)
+                b1.button(
+                    "Nu știu",
+                    on_click=raspunde_card,
+                    args=(False,),
+                    key="sr_nu",
+                    use_container_width=True,
+                )
+                b2.button(
+                    "Știu",
+                    on_click=raspunde_card,
+                    args=(True,),
+                    key="sr_stiu",
+                    use_container_width=True,
+                    type="primary",
+                )
+            st.caption(f"Mai ai {ramase} carduri de învățat în această rundă.")
+
+        else:
+            st.success("Ai terminat toate cardurile din această sesiune. Bravo!")
+            gresite = studiu["gresite"]
+            din_prima = sum(1 for k in studiu["ids"] if k not in gresite)
+
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Știute din prima", f"{din_prima}/{total_s}")
+            m2.metric("Încercări în total", studiu["incercari"])
+            m3.metric("Carduri greșite măcar o dată", len(gresite))
+
+            grele = sorted(gresite.items(), key=lambda x: -x[1])
+            if grele:
+                st.subheader("Cardurile la care ai greșit cel mai des")
+                for k, nr_gres in grele[:5]:
+                    ori = "dată" if nr_gres == 1 else "ori"
+                    st.markdown(f"- **{carduri[k]['fata']}** (greșit de {nr_gres} {ori})")
+
+            b1, b2 = st.columns(2)
+            b1.button(
+                "Studiază din nou toate",
+                on_click=porneste_studiu,
+                args=(len(carduri),),
+                key="sr_toate",
+                use_container_width=True,
+            )
+            if grele:
+                b2.button(
+                    "Repetă doar cardurile dificile",
+                    on_click=porneste_studiu,
+                    args=(len(carduri), [k for k, _ in grele]),
+                    key="sr_grele",
+                    use_container_width=True,
+                )
 
 # ---------------- REZUMAT ----------------
 with tab_rezumat:
@@ -1600,7 +1681,7 @@ with tab_intreaba:
 
     if trimis and intrebare.strip():
         intrebare = intrebare.strip()
-        ramase = MAX_INTREBARI_SESIUNE - chat["folosite"]
+        ramase_q = MAX_INTREBARI_SESIUNE - chat["folosite"]
         primul = len(chat["mesaje"]) == 0
         cheie_q = ("intreaba", mat["hash"], limba, _norm(intrebare))
         dep = depozit()
@@ -1615,7 +1696,7 @@ with tab_intreaba:
                     "surse": dep[cheie_q].get("surse", ""),
                 }
             )
-        elif ramase <= 0:
+        elif ramase_q <= 0:
             st.warning(
                 "Ai folosit toate întrebările din această sesiune. "
                 "Revino mai târziu sau încearcă flashcardurile și rezumatul."
