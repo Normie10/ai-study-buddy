@@ -21,7 +21,6 @@ load_dotenv()
 # Trebuie să fie prima comandă Streamlit din script
 st.set_page_config(
     page_title="AI Study Buddy",
-    page_icon="📚",
     layout="centered",
 )
 
@@ -133,13 +132,9 @@ DESCRIERI_TAB = {
 
 CSS_APP = """
 <style>
-.block-container, [data-testid="stMainBlockContainer"] {
+[data-testid="stMainBlockContainer"], .block-container {
     padding-top: 2.5rem;
     padding-bottom: 4rem;
-}
-[data-testid="stBaseButton-primary"], [data-testid="stBaseButton-secondary"],
-button[kind="primary"], button[kind="secondary"] {
-    border-radius: 10px;
 }
 [data-testid="stTabs"] button[role="tab"] {
     font-weight: 600;
@@ -157,22 +152,22 @@ def afiseaza_ghid():
         """
 **Cum folosești aplicația**
 
-1. **Alege materialul**: încarcă un PDF, un document Word sau un fișier text, ori
+1. **Alege materialul.** Încarcă un PDF, un document Word sau un fișier text, ori
    lipește text cu Ctrl+V. La documentele lungi alegi partea pe care vrei s-o
    înveți (de exemplu un capitol).
-2. **Alege ce vrei să faci** din taburile de mai jos.
-3. **Învață și verifică**: răspunsurile arată de unde vin în document (pagina sau
+2. **Alege ce vrei să faci** din secțiunile de mai jos.
+3. **Învață și verifică.** Răspunsurile arată de unde vin în document (pagina sau
    secțiunea), ca să poți verifica.
 
-**Ce găsești în aplicație**
+**Secțiuni**
 
-- 📝 **Quiz**: întrebări grilă cu explicații, care se pot printa.
-- ⏱️ **Examen**: test cu cronometru și raport cu locurile la care ai greșit.
-- 🗂️ **Flashcarduri**: cu repetare, cardurile greșite revin până le știi.
-- 📄 **Rezumat**: scurt, mediu sau detaliat.
-- 💬 **Întreabă**: explicații simple, din documentul tău.
-- 🎓 **SAT**: întrebări în stilul SAT-ului digital, **fără document**. Merge direct,
+- **Quiz:** întrebări grilă cu explicații, care se pot printa.
+- **Examen:** test cu cronometru și raport cu locurile la care ai greșit.
+- **SAT:** întrebări în stilul SAT-ului digital, fără document. Merge direct,
   nu trebuie să încarci nimic.
+- **Flashcarduri:** cu repetare, cardurile greșite revin până le știi.
+- **Rezumat:** scurt, mediu sau detaliat.
+- **Întreabă:** explicații simple, din documentul tău.
 
 **Bine de știut**
 
@@ -186,7 +181,7 @@ def afiseaza_ghid():
 def afiseaza_footer():
     st.divider()
     st.caption(
-        "AI Study Buddy · Conținutul e generat de AI și poate conține greșeli. "
+        "AI Study Buddy. Conținutul e generat de AI și poate conține greșeli. "
         "Textul din documentele tale este trimis la Google pentru generare, deci nu "
         "încărca materiale private. Pentru a economisi cereri, serverul păstrează "
         "temporar în memorie întrebările generate și textul extras din ultimele "
@@ -379,7 +374,7 @@ def alege_interval(mat):
                 st.warning(
                     f"Documentul are aproximativ {fmt(total_car)} de caractere, "
                     "prea mult pentru o singură generare. Alege o parte (maximum "
-                    f"{fmt(MAX_CARACTERE)} de caractere odată). Tab-ul „Întreabă” "
+                    f"{fmt(MAX_CARACTERE)} de caractere odată). Secțiunea „Întreabă” "
                     "caută oricum în tot documentul."
                 )
             if mat["capitole"]:
@@ -1134,12 +1129,15 @@ def html_examen(titlu, scor, total, procent, folosit, de_recapitulat, detalii, m
     parti.append("<h2>Întrebările</h2>")
     for i, q, ales, ok in detalii:
         clasa = "ok" if ok else "gresit"
-        semn = "&#10004;" if ok else "&#10008;"
+        stare = "Corect" if ok else "Greșit"
         parti.append('<div class="intrebare">')
         if q.get("pasaj"):
             pasaj_html = e(q["pasaj"], q).replace("\n", "<br>")
             parti.append(f'<div class="pasaj">{pasaj_html}</div>')
-        parti.append(f'<p class="{clasa}">{semn} {i + 1}. {e(q["intrebare"], q)}</p>')
+        parti.append(
+            f'<p class="{clasa}">{i + 1}. {e(q["intrebare"], q)} '
+            f'<span class="mic">({stare})</span></p>'
+        )
         parti.append(
             f"<div>Răspunsul tău: {e(ales, q) if ales else 'fără răspuns'}</div>"
         )
@@ -1258,11 +1256,13 @@ def afiseaza_rezultat(ex, nume):
 
     with st.expander("Vezi toate întrebările și răspunsurile"):
         for i, q, ales, ok in detalii:
-            semn = "✅" if ok else "❌"
+            stare = "Corect" if ok else "Greșit"
             if q.get("pasaj"):
                 st.markdown(md(q["pasaj"], q))
-            st.markdown(f"**{semn} {i + 1}. {md(q['intrebare'], q)}**")
-            st.markdown(f"Răspunsul tău: {md(ales, q) if ales else 'fără răspuns'}")
+            st.markdown(f"**{i + 1}. {md(q['intrebare'], q)}**")
+            st.markdown(
+                f"{stare}. Răspunsul tău: {md(ales, q) if ales else 'fără răspuns'}"
+            )
             if not ok:
                 st.markdown(f"Răspuns corect: {md(q['variante'][q['corect']], q)}")
             st.caption(f"{md(q['explicatie'], q)} ({sursa_text(q)})")
@@ -1336,7 +1336,7 @@ def afiseaza_examen(nume, context, formular):
 
 # ------------------------- interfața -------------------------
 st.markdown(CSS_APP, unsafe_allow_html=True)
-st.title("📚 AI Study Buddy")
+st.title("AI Study Buddy")
 st.caption(
     "Transformă materialele tale în quiz-uri, teste cu cronometru, flashcarduri "
     "și rezumate."
@@ -1438,14 +1438,7 @@ with zona_intro:
 st.subheader("2. Alege ce vrei să faci")
 
 tab_quiz, tab_examen, tab_sat, tab_carduri, tab_rezumat, tab_intreaba = st.tabs(
-    [
-        "📝 Quiz",
-        "⏱️ Examen",
-        "🎓 SAT",
-        "🗂️ Flashcarduri",
-        "📄 Rezumat",
-        "💬 Întreabă",
-    ]
+    ["Quiz", "Examen", "SAT", "Flashcarduri", "Rezumat", "Întreabă"]
 )
 
 # ---------------- SAT (nu are nevoie de document) ----------------
@@ -1522,6 +1515,7 @@ eticheta_mat = mat["eticheta"]
 
 # ---------------- QUIZ ----------------
 with tab_quiz:
+    st.caption(DESCRIERI_TAB["quiz"])
     col1, col2 = st.columns(2)
     nr = col1.number_input("Număr întrebări", 3, 20, 5)
     dif = col2.selectbox("Dificultate", ["ușoară", "medie", "grea"], index=1)
@@ -1549,7 +1543,7 @@ with tab_quiz:
 
     quiz = st.session_state.get("quiz")
     if quiz:
-        st.header("Quiz")
+        st.subheader("Quiz")
         st.caption(f"Model: {st.session_state.get('info_quiz', '?')}")
         st.download_button(
             "Descarcă quiz-ul pentru printat (.html)",
@@ -1586,10 +1580,7 @@ with tab_quiz:
 with tab_examen:
 
     def formular_examen():
-        st.write(
-            "Un test cu cronometru, din documentul încărcat. La final primești "
-            "scorul și un raport cu locurile din document la care ai greșit cel mai mult."
-        )
+        st.caption(DESCRIERI_TAB["examen"])
         c1, c2, c3 = st.columns(3)
         nr_ex = c1.number_input("Număr întrebări", 5, 30, 10, key="ex_nr")
         dif_ex = c2.selectbox(
@@ -1624,6 +1615,7 @@ with tab_examen:
 
 # ------------- FLASHCARDURI (cu repetare) -------------
 with tab_carduri:
+    st.caption(DESCRIERI_TAB["carduri"])
     nr_carduri = st.number_input("Număr flashcarduri", 5, 20, 10)
 
     if st.button("Generează flashcarduri"):
@@ -1749,6 +1741,7 @@ with tab_carduri:
 
 # ---------------- REZUMAT ----------------
 with tab_rezumat:
+    st.caption(DESCRIERI_TAB["rezumat"])
     nivel = st.selectbox("Cât de detaliat?", list(NIVELE_REZUMAT.keys()), index=1)
 
     if st.button("Generează rezumat"):
@@ -1792,10 +1785,10 @@ with tab_rezumat:
 with tab_intreaba:
     chat = chat_curent(mat["hash"])
 
-    st.write(
+    st.caption(
         "Scrie o întrebare sau un concept pe care nu-l înțelegi și primești o "
-        "explicație bazată doar pe document. Caut în **tot documentul**, nu doar "
-        "în partea aleasă mai sus."
+        "explicație bazată doar pe document. Caut în tot documentul, nu doar "
+        "în partea aleasă la pasul 1."
     )
     # loc rezervat: contorul se completează după procesarea întrebării
     contor = st.empty()
