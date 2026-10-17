@@ -1,6 +1,7 @@
-"""Conexiunea la Supabase: autentificare (cont, login, logout) și salvarea
-materialelor pe cont. Nu folosește deloc interfața (Streamlit), în afară de
-session_state, ca să țină minte clientul și utilizatorul curent."""
+"""Conexiunea la Supabase: autentificare (cont, login, logout), materialele
+salvate și progresul (scorurile) pe cont. Nu folosește deloc interfața
+(Streamlit), în afară de session_state, ca să țină minte clientul și
+utilizatorul curent."""
 
 import hashlib
 
@@ -79,3 +80,39 @@ def materiale_utilizator():
 
 def sterge_material(material_id):
     _client().table("materiale").delete().eq("id", material_id).execute()
+
+
+# ------------------------- progres (scoruri) -------------------------
+def salveaza_progres(sectiune, scor, total, detalii=None):
+    """Salvează un rezultat (scor/total) pentru utilizatorul curent. Nu
+    oprește aplicația dacă eșuează — un scor nesalvat nu trebuie să strice
+    afișarea rezultatului către elev."""
+    user = utilizator_curent()
+    if user is None:
+        return
+    try:
+        _client().table("progres").insert(
+            {
+                "user_id": user.id,
+                "sectiune": sectiune,
+                "scor": scor,
+                "total": total,
+                "detalii": detalii or {},
+            }
+        ).execute()
+    except Exception:
+        pass
+
+
+def progres_utilizator(limita=50):
+    user = utilizator_curent()
+    rezultat = (
+        _client()
+        .table("progres")
+        .select("id, sectiune, scor, total, creat_la")
+        .eq("user_id", user.id)
+        .order("creat_la", desc=True)
+        .limit(limita)
+        .execute()
+    )
+    return rezultat.data
