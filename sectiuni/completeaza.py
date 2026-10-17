@@ -233,3 +233,107 @@ def _intrebare(s):
 
     st.progress(i / total, text=f"Întrebarea {i + 1} din {total}")
     st.caption(f"Model: {s['info']}")
+
+    with st.container(border=True):
+        st.markdown("**Completează spațiul liber:**")
+        st.subheader(_md(q["intrebare"]))
+
+    if stare is None:
+        raspuns_dat = st.text_input("Răspunsul tău", key=f"comp_text_{i}")
+        if st.button("Verifică", key=f"comp_verifica_{i}", type="primary"):
+            _verifica(i, raspuns_dat, q)
+            st.rerun()
+    else:
+        text_dat, e_corect, aproape = stare
+        if e_corect and not aproape:
+            st.success(f"Corect! Ai scris: „{text_dat}”.")
+        elif e_corect and aproape:
+            st.success(
+                f"Corect (ai greșit puțin scrierea). Ai scris: „{text_dat}”, "
+                f"forma corectă e „{q['raspuns']}”."
+            )
+        else:
+            st.error(f"Greșit. Ai scris: „{text_dat}”. Răspunsul corect: {q['raspuns']}.")
+        if q.get("explicatie"):
+            st.markdown(_md(q["explicatie"]))
+        st.caption(f"{q.get('unitate', 'pagina').capitalize()} {q.get('pagina', '?')}")
+        ultima = i + 1 >= total
+        st.button(
+            "Vezi rezultatul" if ultima else "Următoarea",
+            on_click=_urmatoarea,
+            key="comp_next",
+            use_container_width=True,
+            type="primary",
+        )
+    st.caption(f"Corecte până acum: {corecte} din {len(s['raspunsuri'])}")
+
+
+def _rezultate(s):
+    total = len(s["intrebari"])
+    gresite = [
+        (i, q) for i, q in enumerate(s["intrebari"])
+        if not s["raspunsuri"].get(i, (None, False, False))[1]
+    ]
+    scor = total - len(gresite)
+    procent = round(100 * scor / total)
+
+    st.progress(1.0, text="Ai terminat")
+    c1, c2 = st.columns(2)
+    c1.metric("Scor", f"{scor}/{total}")
+    c2.metric("Procent", f"{procent}%")
+
+    if not gresite:
+        st.success("Ai răspuns corect la toate întrebările. Bravo!")
+    else:
+        st.subheader("Ce să recapitulezi")
+        grupuri = Counter(eticheta_grup(q) for _, q in gresite)
+        for eticheta, nr in grupuri.most_common():
+            cuvant = "întrebare greșită" if nr == 1 else "întrebări greșite"
+            st.markdown(f"- **{eticheta}**: {nr} {cuvant}")
+        st.caption(
+            "Locurile indicate sunt cele date de model pentru fiecare întrebare. "
+            "Verifică-le în document."
+        )
+        with st.expander("Vezi întrebările greșite"):
+            for i, q in gresite:
+                text_dat = s["raspunsuri"].get(i, ("(fără răspuns)", False, False))[0]
+                st.markdown(f"**{i + 1}. {_md(q['intrebare'])}**")
+                st.markdown(
+                    f"Răspunsul tău: {text_dat or '(fără răspuns)'}. "
+                    f"Răspuns corect: {q['raspuns']}."
+                )
+                if q.get("explicatie"):
+                    st.caption(_md(q["explicatie"]))
+                st.divider()
+
+    b1, b2 = st.columns(2)
+    if gresite:
+        b1.button(
+            "Repetă doar întrebările greșite",
+            on_click=_repeta_gresite,
+            key="comp_repeta",
+            use_container_width=True,
+        )
+    b2.button(
+        "Început nou",
+        on_click=_inceput_nou,
+        key="comp_nou",
+        use_container_width=True,
+    )
+
+
+def afiseaza(ctx):
+    """Funcția pe care o apelează aplicația pentru această secțiune."""
+    st.caption(DESCRIERE)
+
+    s = st.session_state.get(CHEIE)
+    if s and s["hash"] != ctx.hash_material:
+        st.session_state.pop(CHEIE, None)  # s-a schimbat materialul
+        s = None
+
+    if s is None:
+        _setari(ctx)
+    elif s["idx"] < len(s["intrebari"]):
+        _intrebare(s)
+    else:
+        _rezultate(s)
