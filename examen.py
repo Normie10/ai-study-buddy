@@ -5,6 +5,7 @@ import time
 
 import streamlit as st
 
+from baza_date import salveaza_progres
 from export_html import html_examen
 from utile import eticheta_grup, formateaza_timp, md, sursa_text, text_intrebare
 
@@ -79,6 +80,11 @@ def afiseaza_rezultat(ex, nume):
         if not ok:
             stat[1] += 1
         detalii.append((i, q, ales, ok))
+
+    # salvăm scorul pe cont o singură dată, prima oară când se afișează rezultatul
+    if not ex.get("progres_salvat"):
+        salveaza_progres(nume, scor, total)
+        ex["progres_salvat"] = True
 
     procent = round(100 * scor / total)
     folosit = ex["sfarsit"] - ex["start"]
