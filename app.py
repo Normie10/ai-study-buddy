@@ -1,232 +1,277 @@
-"""Secțiune: Adevărat / Fals.
+"""AI Study Buddy: fișierul principal (aspectul paginii).
 
-O afirmație pe rând: răspunzi cu Adevărat sau Fals și vezi imediat dacă ai
-nimerit, cu explicație și sursă. La final primești scorul și ce să recapitulezi.
-
-Așa arată orice secțiune nouă: un fișier în folderul sectiuni/ cu cele patru
-setări de mai jos și o funcție afiseaza(ctx). Aplicația o găsește singură.
+Restul codului e împărțit în fișiere separate:
+  config.py       setări și texte
+  utile.py        funcții mici
+  documente.py    citirea documentelor și alegerea unei părți
+  generare.py     modelul AI (prompturi)
+  memorie.py      memoria comună (teancurile de întrebări)
+  export_html.py  fișierele de descărcat și printat
+  examen.py       testul cu cronometru
+  taburi.py       secțiunile de bază (Quiz, Examen, SAT, Flashcarduri...)
+  sectiuni/       secțiuni noi: fiecare fișier de aici apare singur în aplicație
 """
 
-from collections import Counter
+import importlib
+import os
+import sys
+from pathlib import Path
 
 import streamlit as st
 
-from export_html import html_quiz
-from generare import genereaza_teanc_af
-from memorie import preia_din_teanc
-from utile import eticheta_grup
+# Trebuie să fie prima comandă Streamlit din script
+st.set_page_config(page_title="AI Study Buddy", layout="centered")
 
-NUME = "Adevărat / Fals"
-ORDINE = 25  # poziția în listă: numerele mici apar primele
-CERE_MATERIAL = True  # False = merge și fără document (ca SAT)
-DESCRIERE = (
-    "Afirmații din materialul tău. Răspunzi pe rând cu Adevărat sau Fals și vezi "
-    "imediat dacă ai nimerit, cu explicație și sursa din document."
+try:
+    RADACINA = Path(__file__).resolve().parent
+except NameError:  # dacă rulează fără __file__
+    RADACINA = Path.cwd()
+if str(RADACINA) not in sys.path:
+    sys.path.insert(0, str(RADACINA))
+DIR_SECTIUNI = RADACINA / "sectiuni"
+
+from dotenv import load_dotenv  # noqa: E402
+from google import genai  # noqa: E402
+from google.genai import types  # noqa: E402
+
+from config import (  # noqa: E402
+    CSS_APP,
+    DESCRIERI_TAB,
+    MAX_CARACTERE_LIPIT,
+    PLURAL,
+    TEXT_FOOTER,
+    TEXT_GHID,
 )
+from documente import (  # noqa: E402
+    alege_interval,
+    are_text,
+    material_din_fisier,
+    material_din_text,
+)
+from taburi import (  # noqa: E402
+    Context,
+    curata_rezultate,
+    tab_carduri,
+    tab_examen,
+    tab_intreaba,
+    tab_quiz,
+    tab_rezumat,
+    tab_sat,
+)
+from utile import fmt  # noqa: E402
 
-CHEIE = "afs_sesiune"  # unde ținem în memorie sesiunea curentă
+load_dotenv()
 
-
-def _md(text):
-    """Semnul $ nu trebuie interpretat ca formulă."""
-    return str(text).replace("$", "\\$")
-
-
-def _porneste(intrebari, info, hash_material):
-    st.session_state[CHEIE] = {
-        "hash": hash_material,
-        "intrebari": intrebari,
-        "info": info,
-        "idx": 0,
-        "raspunsuri": {},  # poziția afirmației -> 0 (Adevărat) sau 1 (Fals)
-    }
-
-
-def _raspunde(alegere):
-    s = st.session_state.get(CHEIE)
-    if s and s["idx"] not in s["raspunsuri"]:
-        s["raspunsuri"][s["idx"]] = alegere
-
-
-def _urmatoarea():
-    s = st.session_state.get(CHEIE)
-    if s:
-        s["idx"] += 1
-
-
-def _inceput_nou():
-    st.session_state.pop(CHEIE, None)
-
-
-def _repeta_gresite():
-    s = st.session_state.get(CHEIE)
-    if not s:
-        return
-    gresite = [
-        q for i, q in enumerate(s["intrebari"]) if s["raspunsuri"].get(i) != q["corect"]
-    ]
-    if gresite:
-        _porneste(gresite, s["info"], s["hash"])
+# Secțiunile de bază. "ordine" hotărăște poziția (numerele mici apar primele).
+SECTIUNI_DE_BAZA = [
+    {"nume": "Quiz", "ordine": 10, "cere_material": True,
+     "descriere": DESCRIERI_TAB["quiz"], "afiseaza": tab_quiz},
+    {"nume": "Examen", "ordine": 20, "cere_material": True,
+     "descriere": DESCRIERI_TAB["examen"], "afiseaza": tab_examen},
+    {"nume": "SAT", "ordine": 30, "cere_material": False,
+     "descriere": "", "afiseaza": tab_sat},
+    {"nume": "Flashcarduri", "ordine": 40, "cere_material": True,
+     "descriere": DESCRIERI_TAB["carduri"], "afiseaza": tab_carduri},
+    {"nume": "Rezumat", "ordine": 50, "cere_material": True,
+     "descriere": DESCRIERI_TAB["rezumat"], "afiseaza": tab_rezumat},
+    {"nume": "Întreabă", "ordine": 60, "cere_material": True,
+     "descriere": DESCRIERI_TAB["intreaba"], "afiseaza": tab_intreaba},
+]
 
 
-def _setari(ctx):
-    c1, c2 = st.columns(2)
-    nr = c1.number_input("Număr afirmații", 3, 30, 10, key="afs_nr")
-    dif = c2.selectbox(
-        "Dificultate", ["ușoară", "medie", "grea"], index=1, key="afs_dif"
-    )
+def incarca_sectiuni_noi():
+    """Încarcă secțiunile din folderul sectiuni/. Fiecare fișier .py de acolo e o
+    secțiune nouă și se adaugă singură în aplicație. Un fișier cu probleme nu
+    strică restul aplicației: apare doar un avertisment.
+    Întoarce (secțiuni, erori)."""
+    sectiuni, erori = [], []
+    if not DIR_SECTIUNI.is_dir():
+        return sectiuni, erori
 
-    if st.button("Începe", key="afs_start"):
-        with st.spinner("Pregătesc afirmațiile..."):
-            try:
-                elemente, model, nota = preia_din_teanc(
-                    ("af", ctx.hash_material, dif, ctx.limba),
-                    nr,
-                    "intrebare",
-                    lambda: genereaza_teanc_af(
-                        ctx.client, ctx.selectate, ctx.eticheta, dif, ctx.limba
-                    ),
-                )
-            except Exception as e_af:
-                st.error(f"A apărut o eroare: {e_af}")
-                return
-        if not elemente:
-            st.error("Nu am găsit afirmații în acest material.")
-            return
-        info = f"{model} · {nota}"
-        if len(elemente) < nr:
-            info += f" (am găsit doar {len(elemente)} afirmații distincte)"
-        _porneste(elemente, info, ctx.hash_material)
-        st.rerun()
+    init = DIR_SECTIUNI / "__init__.py"
+    if not init.exists():
+        try:
+            init.write_text("", encoding="utf-8")
+        except OSError:
+            pass
+    importlib.invalidate_caches()  # ca să vadă și fișierele create chiar acum
+
+    for fisier in sorted(DIR_SECTIUNI.glob("*.py")):
+        if fisier.stem.startswith("_"):
+            continue
+        try:
+            modul = importlib.import_module(f"sectiuni.{fisier.stem}")
+            sectiuni.append(
+                {
+                    "nume": modul.NUME,
+                    "ordine": getattr(modul, "ORDINE", 100),
+                    "cere_material": getattr(modul, "CERE_MATERIAL", True),
+                    "descriere": getattr(modul, "DESCRIERE", ""),
+                    "afiseaza": modul.afiseaza,
+                    "noua": True,
+                }
+            )
+        except Exception as e:
+            erori.append(f"{fisier.name}: {e}")
+    return sectiuni, erori
 
 
-def _intrebare(s):
-    total = len(s["intrebari"])
-    i = s["idx"]
-    q = s["intrebari"][i]
-    raspuns = s["raspunsuri"].get(i)
-    corecte = sum(
-        1 for j, a in s["raspunsuri"].items() if a == s["intrebari"][j]["corect"]
-    )
+def cheie_api():
+    cheie = os.getenv("GOOGLE_API_KEY")
+    if cheie:
+        return cheie
+    try:
+        return st.secrets["GOOGLE_API_KEY"]
+    except Exception:
+        return None
 
-    st.progress(i / total, text=f"Afirmația {i + 1} din {total}")
-    st.caption(f"Model: {s['info']}")
+
+def sterge_textul():
+    st.session_state["text_lipit"] = ""
+    st.session_state["caseta_text"] = ""
+
+
+def pasul_material():
+    """Pasul 1: limba și materialul. Întoarce (limba, material, părțile alese, hash)."""
+    mat = None
+    selectate = None
+    hash_material = None
 
     with st.container(border=True):
-        st.markdown("**Adevărat sau fals?**")
-        st.subheader(_md(q["intrebare"]))
+        st.subheader("1. Alege materialul")
 
-    if raspuns is None:
-        b1, b2 = st.columns(2)
-        b1.button(
-            "Adevărat",
-            on_click=_raspunde,
-            args=(0,),
-            key="afs_adev",
-            use_container_width=True,
+        limba = st.selectbox(
+            "Limba întrebărilor și a explicațiilor",
+            ["română", "engleză"],
+            help="La SAT, întrebările rămân în engleză; explicațiile urmează această limbă.",
         )
-        b2.button(
-            "Fals",
-            on_click=_raspunde,
-            args=(1,),
-            key="afs_fals",
-            use_container_width=True,
+
+        sursa = st.radio(
+            "De unde iei materialul? (nu e nevoie pentru SAT)",
+            ["Încarcă un fișier", "Lipește text"],
+            horizontal=True,
+            key="sursa_material",
         )
-    else:
-        if raspuns == q["corect"]:
-            st.success("Corect!")
+
+        if sursa == "Încarcă un fișier":
+            fisier = st.file_uploader(
+                "PDF, Word (.docx) sau text (.txt, .md)",
+                type=["pdf", "docx", "txt", "md"],
+            )
+            if fisier:
+                try:
+                    mat = material_din_fisier(fisier)
+                except Exception as e_fis:
+                    st.error(f"Nu am putut citi fișierul: {e_fis}")
         else:
-            st.error(f"Greșit. Răspunsul corect: {q['variante'][q['corect']]}.")
-        if q.get("explicatie"):
-            st.markdown(_md(q["explicatie"]))
-        st.caption(f"{q.get('unitate', 'pagina').capitalize()} {q.get('pagina', '?')}")
-        ultima = i + 1 >= total
-        st.button(
-            "Vezi rezultatul" if ultima else "Următoarea",
-            on_click=_urmatoarea,
-            key="afs_next",
-            use_container_width=True,
-            type="primary",
-        )
-    st.caption(f"Corecte până acum: {corecte} din {len(s['raspunsuri'])}")
-
-
-def _rezultate(s):
-    total = len(s["intrebari"])
-    gresite = [
-        (i, q)
-        for i, q in enumerate(s["intrebari"])
-        if s["raspunsuri"].get(i) != q["corect"]
-    ]
-    scor = total - len(gresite)
-    procent = round(100 * scor / total)
-
-    st.progress(1.0, text="Ai terminat")
-    c1, c2 = st.columns(2)
-    c1.metric("Scor", f"{scor}/{total}")
-    c2.metric("Procent", f"{procent}%")
-
-    if not gresite:
-        st.success("Ai răspuns corect la toate afirmațiile. Bravo!")
-    else:
-        st.subheader("Ce să recapitulezi")
-        grupuri = Counter(eticheta_grup(q) for _, q in gresite)
-        for eticheta, nr in grupuri.most_common():
-            cuvant = "afirmație greșită" if nr == 1 else "afirmații greșite"
-            st.markdown(f"- **{eticheta}**: {nr} {cuvant}")
-        st.caption(
-            "Locurile indicate sunt cele date de model pentru fiecare afirmație. "
-            "Verifică-le în document."
-        )
-        with st.expander("Vezi afirmațiile greșite"):
-            for i, q in gresite:
-                ales = s["raspunsuri"].get(i)
-                ales_text = q["variante"][ales] if ales is not None else "fără răspuns"
-                st.markdown(f"**{i + 1}. {_md(q['intrebare'])}**")
-                st.markdown(
-                    f"Răspunsul tău: {ales_text}. "
-                    f"Răspuns corect: {q['variante'][q['corect']]}."
+            with st.form("form_text"):
+                text_nou = st.text_area(
+                    f"Lipește aici textul (Ctrl+V). Maximum {fmt(MAX_CARACTERE_LIPIT)} de caractere.",
+                    height=250,
+                    max_chars=MAX_CARACTERE_LIPIT,
+                    key="caseta_text",
                 )
-                if q.get("explicatie"):
-                    st.caption(_md(q["explicatie"]))
-                st.divider()
+                trimis_text = st.form_submit_button("Folosește acest text")
+            if trimis_text:
+                st.session_state["text_lipit"] = text_nou
 
-    st.download_button(
-        "Descarcă afirmațiile pentru printat (.html)",
-        data=html_quiz(s["intrebari"]),
-        file_name="adevarat_fals.html",
-        mime="text/html",
-        on_click="ignore",
-        key="afs_dl",
+            text_curent = st.session_state.get("text_lipit", "")
+            if text_curent.strip():
+                mat = material_din_text(text_curent)
+                st.button("Șterge textul", on_click=sterge_textul)
+
+        if mat is not None and not are_text(mat):
+            st.error(
+                "Nu am găsit text în document. Dacă e un PDF scanat (poze cu text), "
+                "momentan nu pot citi text din imagini."
+            )
+            mat = None
+
+        if mat is not None:
+            n_unitati = len(mat["unitati"])
+            total_caractere = sum(len(u["text"]) for u in mat["unitati"])
+            st.success(
+                f"{mat['nume']}: {n_unitati} {PLURAL[mat['eticheta']]}, "
+                f"aproximativ {fmt(total_caractere)} de caractere"
+            )
+            selectate, hash_material = alege_interval(mat)
+
+            if st.session_state.get("hash_material") != hash_material:
+                curata_rezultate()
+                st.session_state["hash_material"] = hash_material
+
+    return limba, mat, selectate, hash_material
+
+
+# ------------------------- pagina -------------------------
+st.markdown(CSS_APP, unsafe_allow_html=True)
+st.title("AI Study Buddy")
+st.caption(
+    "Transformă materialele tale în quiz-uri, teste cu cronometru, flashcarduri "
+    "și rezumate."
+)
+
+# loc rezervat pentru ghid: îl completăm după ce știm dacă există un material
+zona_intro = st.container()
+
+api_key = cheie_api()
+if not api_key:
+    st.error("Lipsește cheia API. Verifică fișierul .env sau setările Secrets.")
+    st.stop()
+
+client = genai.Client(
+    api_key=api_key,
+    http_options=types.HttpOptions(timeout=90000),  # 90 de secunde per încercare
+)
+
+limba, mat, selectate, hash_material = pasul_material()
+ctx = Context(
+    client=client,
+    limba=limba,
+    mat=mat,
+    selectate=selectate,
+    hash_material=hash_material,
+)
+are_material = mat is not None and selectate is not None
+
+sectiuni_noi, erori_sectiuni = incarca_sectiuni_noi()
+sectiuni = sorted(SECTIUNI_DE_BAZA + sectiuni_noi, key=lambda s: s["ordine"])
+
+# ghidul: deschis pentru cine intră prima oară, închis după ce există un material
+with zona_intro:
+    with st.expander("Cum funcționează?", expanded=(mat is None)):
+        st.markdown(TEXT_GHID)
+        descrise = [s for s in sectiuni_noi if s["descriere"]]
+        if descrise:
+            st.markdown(
+                "**Secțiuni adăugate**\n\n"
+                + "\n".join(f"- **{s['nume']}:** {s['descriere']}" for s in descrise)
+            )
+
+# ---------------- pasul 2: ce vrei să faci ----------------
+st.subheader("2. Alege ce vrei să faci")
+
+for eroare in erori_sectiuni:
+    st.warning(
+        f"O secțiune nouă nu s-a putut încărca ({eroare}). "
+        "Restul aplicației merge normal."
     )
-    b1, b2 = st.columns(2)
-    if gresite:
-        b1.button(
-            "Repetă doar afirmațiile greșite",
-            on_click=_repeta_gresite,
-            key="afs_repeta",
-            use_container_width=True,
-        )
-    b2.button(
-        "Început nou",
-        on_click=_inceput_nou,
-        key="afs_nou",
-        use_container_width=True,
-    )
 
+taburi_ui = st.tabs([s["nume"] for s in sectiuni])
+for tab, s in zip(taburi_ui, sectiuni):
+    with tab:
+        if s["cere_material"] and not are_material:
+            st.info(
+                f"{s['descriere']}\n\n"
+                "Încarcă un document (sau lipește text) la pasul 1 ca să începi."
+            )
+        elif s.get("noua"):
+            try:
+                s["afiseaza"](ctx)
+            except Exception as e_sectiune:
+                st.error(f"Secțiunea „{s['nume']}” a dat o eroare: {e_sectiune}")
+        else:
+            s["afiseaza"](ctx)
 
-def afiseaza(ctx):
-    """Funcția pe care o apelează aplicația pentru această secțiune."""
-    st.caption(DESCRIERE)
-
-    s = st.session_state.get(CHEIE)
-    if s and s["hash"] != ctx.hash_material:
-        st.session_state.pop(CHEIE, None)  # s-a schimbat materialul
-        s = None
-
-    if s is None:
-        _setari(ctx)
-    elif s["idx"] < len(s["intrebari"]):
-        _intrebare(s)
-    else:
-        _rezultate(s)
+st.divider()
+st.caption(TEXT_FOOTER)
