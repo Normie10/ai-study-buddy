@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import streamlit as st
 
+from baza_date import salveaza_progres
 from config import (
     DESCRIERI_TAB,
     DISCLAIMER_SAT,
@@ -179,6 +180,7 @@ def tab_quiz(ctx):
                     f"{q['explicatie']} ({q.get('unitate', 'pagina')} {q['pagina']})"
                 )
             st.subheader(f"Scor: {scor}/{len(quiz)}")
+            salveaza_progres("quiz", scor, len(quiz))
 
 
 # ---------------- EXAMEN (din document) ----------------
