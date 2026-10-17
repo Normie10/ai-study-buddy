@@ -8,15 +8,27 @@ Restul codului e împărțit în fișiere separate:
   memorie.py      memoria comună (teancurile de întrebări)
   export_html.py  fișierele de descărcat și printat
   examen.py       testul cu cronometru
-  taburi.py       câte o funcție pentru fiecare secțiune
+  taburi.py       secțiunile de bază (Quiz, Examen, SAT, Flashcarduri...)
+  sectiuni/       secțiuni noi: fiecare fișier de aici apare singur în aplicație
 """
 
+import importlib
 import os
+import sys
+from pathlib import Path
 
 import streamlit as st
 
 # Trebuie să fie prima comandă Streamlit din script
 st.set_page_config(page_title="AI Study Buddy", layout="centered")
+
+try:
+    RADACINA = Path(__file__).resolve().parent
+except NameError:  # dacă rulează fără __file__
+    RADACINA = Path.cwd()
+if str(RADACINA) not in sys.path:
+    sys.path.insert(0, str(RADACINA))
+DIR_SECTIUNI = RADACINA / "sectiuni"
 
 from dotenv import load_dotenv  # noqa: E402
 from google import genai  # noqa: E402
@@ -24,6 +36,7 @@ from google.genai import types  # noqa: E402
 
 from config import (  # noqa: E402
     CSS_APP,
+    DESCRIERI_TAB,
     MAX_CARACTERE_LIPIT,
     PLURAL,
     TEXT_FOOTER,
@@ -38,7 +51,6 @@ from documente import (  # noqa: E402
 from taburi import (  # noqa: E402
     Context,
     curata_rezultate,
-    info_fara_material,
     tab_carduri,
     tab_examen,
     tab_intreaba,
@@ -49,6 +61,59 @@ from taburi import (  # noqa: E402
 from utile import fmt  # noqa: E402
 
 load_dotenv()
+
+# Secțiunile de bază. "ordine" hotărăște poziția (numerele mici apar primele).
+SECTIUNI_DE_BAZA = [
+    {"nume": "Quiz", "ordine": 10, "cere_material": True,
+     "descriere": DESCRIERI_TAB["quiz"], "afiseaza": tab_quiz},
+    {"nume": "Examen", "ordine": 20, "cere_material": True,
+     "descriere": DESCRIERI_TAB["examen"], "afiseaza": tab_examen},
+    {"nume": "SAT", "ordine": 30, "cere_material": False,
+     "descriere": "", "afiseaza": tab_sat},
+    {"nume": "Flashcarduri", "ordine": 40, "cere_material": True,
+     "descriere": DESCRIERI_TAB["carduri"], "afiseaza": tab_carduri},
+    {"nume": "Rezumat", "ordine": 50, "cere_material": True,
+     "descriere": DESCRIERI_TAB["rezumat"], "afiseaza": tab_rezumat},
+    {"nume": "Întreabă", "ordine": 60, "cere_material": True,
+     "descriere": DESCRIERI_TAB["intreaba"], "afiseaza": tab_intreaba},
+]
+
+
+def incarca_sectiuni_noi():
+    """Încarcă secțiunile din folderul sectiuni/. Fiecare fișier .py de acolo e o
+    secțiune nouă și se adaugă singură în aplicație. Un fișier cu probleme nu
+    strică restul aplicației: apare doar un avertisment.
+    Întoarce (secțiuni, erori)."""
+    sectiuni, erori = [], []
+    if not DIR_SECTIUNI.is_dir():
+        return sectiuni, erori
+
+    init = DIR_SECTIUNI / "__init__.py"
+    if not init.exists():
+        try:
+            init.write_text("", encoding="utf-8")
+        except OSError:
+            pass
+    importlib.invalidate_caches()  # ca să vadă și fișierele create chiar acum
+
+    for fisier in sorted(DIR_SECTIUNI.glob("*.py")):
+        if fisier.stem.startswith("_"):
+            continue
+        try:
+            modul = importlib.import_module(f"sectiuni.{fisier.stem}")
+            sectiuni.append(
+                {
+                    "nume": modul.NUME,
+                    "ordine": getattr(modul, "ORDINE", 100),
+                    "cere_material": getattr(modul, "CERE_MATERIAL", True),
+                    "descriere": getattr(modul, "DESCRIERE", ""),
+                    "afiseaza": modul.afiseaza,
+                    "noua": True,
+                }
+            )
+        except Exception as e:
+            erori.append(f"{fisier.name}: {e}")
+    return sectiuni, erori
 
 
 def cheie_api():
@@ -167,48 +232,46 @@ ctx = Context(
     selectate=selectate,
     hash_material=hash_material,
 )
+are_material = mat is not None and selectate is not None
+
+sectiuni_noi, erori_sectiuni = incarca_sectiuni_noi()
+sectiuni = sorted(SECTIUNI_DE_BAZA + sectiuni_noi, key=lambda s: s["ordine"])
 
 # ghidul: deschis pentru cine intră prima oară, închis după ce există un material
 with zona_intro:
     with st.expander("Cum funcționează?", expanded=(mat is None)):
         st.markdown(TEXT_GHID)
+        descrise = [s for s in sectiuni_noi if s["descriere"]]
+        if descrise:
+            st.markdown(
+                "**Secțiuni adăugate**\n\n"
+                + "\n".join(f"- **{s['nume']}:** {s['descriere']}" for s in descrise)
+            )
 
 # ---------------- pasul 2: ce vrei să faci ----------------
 st.subheader("2. Alege ce vrei să faci")
 
-t_quiz, t_examen, t_sat, t_carduri, t_rezumat, t_intreaba = st.tabs(
-    ["Quiz", "Examen", "SAT", "Flashcarduri", "Rezumat", "Întreabă"]
-)
+for eroare in erori_sectiuni:
+    st.warning(
+        f"O secțiune nouă nu s-a putut încărca ({eroare}). "
+        "Restul aplicației merge normal."
+    )
 
-# SAT nu are nevoie de document, deci se afișează mereu
-with t_sat:
-    tab_sat(ctx)
-
-# restul secțiunilor cer un material
-if mat is None or selectate is None:
-    for tab, cheie_tab in (
-        (t_quiz, "quiz"),
-        (t_examen, "examen"),
-        (t_carduri, "carduri"),
-        (t_rezumat, "rezumat"),
-        (t_intreaba, "intreaba"),
-    ):
-        with tab:
-            info_fara_material(cheie_tab)
-    st.divider()
-    st.caption(TEXT_FOOTER)
-    st.stop()
-
-with t_quiz:
-    tab_quiz(ctx)
-with t_examen:
-    tab_examen(ctx)
-with t_carduri:
-    tab_carduri(ctx)
-with t_rezumat:
-    tab_rezumat(ctx)
-with t_intreaba:
-    tab_intreaba(ctx)
+taburi_ui = st.tabs([s["nume"] for s in sectiuni])
+for tab, s in zip(taburi_ui, sectiuni):
+    with tab:
+        if s["cere_material"] and not are_material:
+            st.info(
+                f"{s['descriere']}\n\n"
+                "Încarcă un document (sau lipește text) la pasul 1 ca să începi."
+            )
+        elif s.get("noua"):
+            try:
+                s["afiseaza"](ctx)
+            except Exception as e_sectiune:
+                st.error(f"Secțiunea „{s['nume']}” a dat o eroare: {e_sectiune}")
+        else:
+            s["afiseaza"](ctx)
 
 st.divider()
 st.caption(TEXT_FOOTER)
