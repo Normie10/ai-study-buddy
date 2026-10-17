@@ -11,6 +11,7 @@ from collections import Counter
 
 import streamlit as st
 
+from baza_date import salveaza_progres
 from export_html import html_quiz
 from generare import genereaza_teanc_af
 from memorie import preia_din_teanc
@@ -39,6 +40,7 @@ def _porneste(intrebari, info, hash_material):
         "info": info,
         "idx": 0,
         "raspunsuri": {},  # poziția afirmației -> 0 (Adevărat) sau 1 (Fals)
+        "progres_salvat": False,
     }
 
 
@@ -160,6 +162,10 @@ def _rezultate(s):
     ]
     scor = total - len(gresite)
     procent = round(100 * scor / total)
+
+    if not s.get("progres_salvat"):
+        salveaza_progres("af", scor, total)
+        s["progres_salvat"] = True
 
     st.progress(1.0, text="Ai terminat")
     c1, c2 = st.columns(2)
