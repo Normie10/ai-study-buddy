@@ -28,8 +28,8 @@ DIM_TEANC_AF = 40
 # Tipurile de întrebări din Quiz și Examen
 TIP_GRILA = "Grilă (4 variante)"
 TIP_AF = "Adevărat / Fals"
-TIP_MIXT = "Amestecat"
-TIPURI_INTREBARI = [TIP_GRILA, TIP_AF, TIP_MIXT]
+TIP_MIXT = "Mix (Grilă + Adevărat/Fals)"
+TIPURI_INTREBARI = [TIP_GRILA, TIP_MIXT]
 
 # Întrebări către Google permise pe sesiune în secțiunea "Întreabă"
 MAX_INTREBARI_SESIUNE = 10
@@ -95,11 +95,11 @@ DISCLAIMER_SAT = (
 # ------------------------- texte afișate în aplicație -------------------------
 DESCRIERI_TAB = {
     "quiz": (
-        "Întrebări grilă, Adevărat/Fals sau amestecate, din materialul tău, cu "
+        "Întrebări grilă sau mix (grilă + Adevărat/Fals), din materialul tău, cu "
         "explicații și sursa fiecărui răspuns. Poți descărca quiz-ul pentru printat."
     ),
     "examen": (
-        "Un test cu cronometru, cu întrebări grilă, Adevărat/Fals sau amestecate. "
+        "Un test cu cronometru, cu întrebări grilă sau mix (grilă + Adevărat/Fals). "
         "La final primești scorul și un raport cu locurile din document la care "
         "ai greșit cel mai mult."
     ),
@@ -129,7 +129,7 @@ TEXT_GHID = """
 
 **Secțiuni**
 
-- **Quiz:** întrebări grilă sau Adevărat/Fals, cu explicații, care se pot printa.
+- **Quiz:** întrebări grilă sau mix cu Adevărat/Fals, cu explicații, care se pot printa.
 - **Examen:** test cu cronometru și raport cu locurile la care ai greșit.
 - **SAT:** întrebări în stilul SAT-ului digital, fără document. Merge direct,
   nu trebuie să încarci nimic.
