@@ -1,7 +1,9 @@
-"""Memoria comună a aplicației: întrebările și cardurile deja generate se
-păstrează în „teancuri”, ca să nu facem o cerere nouă la Google de fiecare dată."""
+"""Memoria aplicației: întrebările și cardurile deja generate se păstrează
+într-un „teanc”, separat pentru fiecare persoană care intră în aplicație, ca
+să nu vadă aceleași întrebări de două ori în aceeași sesiune."""
 
 import random
+import uuid
 
 import streamlit as st
 
@@ -11,8 +13,17 @@ from utile import norm
 
 @st.cache_resource
 def depozit():
-    """Dicționar comun tuturor utilizatorilor, cât timp aplicația rulează."""
+    """Dicționar comun aplicației, cât timp rulează — dar fiecare persoană are
+    propriile chei în el, pentru că fiecare cheie include un id de sesiune."""
     return {}
+
+
+def _id_sesiune():
+    """Un identificator unic per persoană (per sesiune de browser), generat o
+    singură dată și ținut minte cât timp persoana stă pe pagină."""
+    if "id_sesiune" not in st.session_state:
+        st.session_state["id_sesiune"] = uuid.uuid4().hex
+    return st.session_state["id_sesiune"]
 
 
 def citeste(cheie):
@@ -68,9 +79,11 @@ def _alege_din_teanc(cheie, teanc, nr):
 
 def preia_din_teanc(cheie, nr, camp, genereaza):
     """Întoarce (elemente_alese, model, nota).
-    Dacă nu mai sunt destule elemente nevăzute, face o cerere nouă la Google."""
-    teanc = _ia_teanc(cheie)
-    vazute = st.session_state.setdefault("vazute", {}).setdefault(cheie, set())
+    Teancul e propriu persoanei curente (cheia internă include id-ul sesiunii),
+    deci persoana următoare care generează primește un teanc nou al ei."""
+    cheie_proprie = cheie + (_id_sesiune(),)
+    teanc = _ia_teanc(cheie_proprie)
+    vazute = st.session_state.setdefault("vazute", {}).setdefault(cheie_proprie, set())
     nevazute = [i for i in range(len(teanc["elemente"])) if i not in vazute]
 
     nota = "din memorie, fără cerere nouă la Google"
@@ -86,16 +99,17 @@ def preia_din_teanc(cheie, nr, camp, genereaza):
                 "așa că am refolosit elemente din memorie"
             )
 
-    alese, repetate = _alege_din_teanc(cheie, teanc, nr)
+    alese, repetate = _alege_din_teanc(cheie_proprie, teanc, nr)
     if repetate:
         nota += " (unele se pot repeta)"
     return alese, teanc["model"], nota
 
 
 def preia_pentru_examen(cheie, nr, camp, genereaza):
-    """Ca preia_din_teanc, dar face o cerere la Google doar dacă teancul are mai
-    puține întrebări decât cele cerute (și nu am încercat deja pentru atâtea)."""
-    teanc = _ia_teanc(cheie)
+    """Ca preia_din_teanc, dar face o cerere la Google doar dacă teancul (propriu
+    persoanei) are mai puține întrebări decât cele cerute."""
+    cheie_proprie = cheie + (_id_sesiune(),)
+    teanc = _ia_teanc(cheie_proprie)
 
     nota = "din memorie, fără cerere nouă la Google"
     if len(teanc["elemente"]) < nr and teanc.get("max_cerut", 0) < nr:
@@ -111,7 +125,7 @@ def preia_pentru_examen(cheie, nr, camp, genereaza):
                 "așa că am folosit întrebările din memorie"
             )
 
-    alese, _ = _alege_din_teanc(cheie, teanc, nr)
+    alese, _ = _alege_din_teanc(cheie_proprie, teanc, nr)
     return alese, teanc["model"], nota
 
 
