@@ -116,8 +116,11 @@ def preia_pentru_examen(cheie, nr, camp, genereaza):
 
 
 def amesteca_variante(q):
-    """Amestecă variantele și actualizează indexul răspunsului corect."""
-    ordine = list(range(4))
+    """Amestecă variantele și actualizează indexul răspunsului corect.
+    La Adevărat/Fals nu amestecăm: „Adevărat” rămâne mereu prima variantă."""
+    if q.get("tip_intrebare") == "af":
+        return q
+    ordine = list(range(len(q["variante"])))
     random.shuffle(ordine)
     q["variante"] = [q["variante"][i] for i in ordine]
     q["corect"] = ordine.index(q["corect"])

@@ -6,6 +6,7 @@ import random
 import re
 
 from config import (
+    DIM_TEANC_AF,
     DIM_TEANC_CARDURI,
     DIM_TEANC_QUIZ,
     LIMBI_EN,
@@ -85,6 +86,46 @@ def valideaza_carduri(lista, unitate):
     return bune
 
 
+def _ca_bool(valoare):
+    """Citește un adevărat/fals scris în mai multe feluri (true, "fals", "da"...)."""
+    if isinstance(valoare, bool):
+        return valoare
+    s = str(valoare).strip().lower()
+    if s in ("true", "adevarat", "adevărat", "da", "1"):
+        return True
+    if s in ("false", "fals", "nu", "0"):
+        return False
+    raise ValueError(f"valoare neclară: {valoare!r}")
+
+
+def valideaza_af(lista, unitate):
+    """Transformă afirmațiile în același format ca întrebările grilă, cu două
+    variante: Adevărat (index 0) și Fals (index 1)."""
+    bune = []
+    for a in lista:
+        try:
+            afirmatie = str(a["afirmatie"]).strip()
+            if not afirmatie:
+                continue
+            adevarat = _ca_bool(a["adevarat"])
+            bune.append(
+                {
+                    "intrebare": afirmatie,
+                    "variante": ["Adevărat", "Fals"],
+                    "corect": 0 if adevarat else 1,
+                    "pagina": a.get("pagina", "?"),
+                    "unitate": unitate,
+                    "explicatie": str(a.get("explicatie", "")),
+                    "tip_intrebare": "af",
+                }
+            )
+        except Exception:
+            continue
+    if not bune:
+        raise ValueError("Niciun element valid în răspuns")
+    return bune
+
+
 # ------------------------- generatoare (din document) -------------------------
 def genereaza_teanc_quiz(client, unitati, eticheta, dificultate, limba):
     prompt = f"""Ești un profesor care creează teste. Pe baza TEXTULUI de mai jos,
@@ -106,6 +147,37 @@ TEXT:
 {text_din_unitati(unitati, eticheta)}"""
     return cere_model(
         client, prompt, lambda t: valideaza_quiz(_parse_json(t), eticheta)
+    )
+
+
+def genereaza_teanc_af(client, unitati, eticheta, dificultate, limba):
+    prompt = f"""Ești un profesor care creează teste. Pe baza TEXTULUI de mai jos,
+creează cât mai multe afirmații de tip Adevărat/Fals distincte, dar maximum
+{DIM_TEANC_AF}, dificultate {dificultate}, în limba {limba}.
+
+Reguli:
+- Folosește DOAR informații din text.
+- Aproximativ jumătate din afirmații trebuie să fie adevărate și jumătate false,
+  în ordine amestecată.
+- O afirmație falsă trebuie să fie o versiune plauzibilă, dar greșită, a unei
+  informații din text (de exemplu o cifră, un termen sau o relație schimbată).
+  Nu folosi afirmații evident absurde.
+- Nu folosi cuvinte ca „întotdeauna”, „niciodată” sau „doar” ca indiciu pentru
+  răspuns, decât dacă textul le folosește.
+- Fiecare afirmație e o propoziție clară, cu o singură idee, fără negații duble.
+- Fiecare afirmație tratează un alt aspect; nu repeta și nu reformula.
+- În "explicatie" spune care e varianta corectă și de ce. La o afirmație falsă,
+  spune ce spune de fapt textul.
+- În câmpul "pagina" pune numărul din eticheta [{eticheta.capitalize()} N] a
+  fragmentului de unde provine informația.
+- Răspunde DOAR cu JSON valid, fără alt text, în formatul:
+[{{"afirmatie": "...", "adevarat": true, "pagina": 1, "explicatie": "..."}}]
+("adevarat" este true dacă afirmația e adevărată și false dacă e falsă)
+
+TEXT:
+{text_din_unitati(unitati, eticheta)}"""
+    return cere_model(
+        client, prompt, lambda t: valideaza_af(_parse_json(t), eticheta)
     )
 
 

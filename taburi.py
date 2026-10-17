@@ -16,12 +16,16 @@ from config import (
     NIVELE_REZUMAT,
     NIVELE_SAT,
     SECTIUNI_SAT,
+    TIP_AF,
+    TIP_GRILA,
+    TIPURI_INTREBARI,
 )
 from documente import alege_fragmente, descrie_surse
 from examen import afiseaza_examen
 from export_html import html_carduri, html_quiz
 from generare import (
     genereaza_rezumat,
+    genereaza_teanc_af,
     genereaza_teanc_carduri,
     genereaza_teanc_quiz,
     genereaza_teanc_sat,
@@ -34,7 +38,7 @@ from memorie import (
     preia_pentru_examen,
     salveaza,
 )
-from utile import norm
+from utile import norm, text_intrebare
 
 
 @dataclass
@@ -77,9 +81,52 @@ def info_fara_material(cheie_tab):
     )
 
 
+def alege_intrebari(ctx, tip, nr, dif, pentru_examen=False):
+    """Alege întrebările pentru quiz sau examen, în funcție de tipul cerut
+    (grilă, Adevărat/Fals sau amestecat). Întoarce (întrebări, model, notă)."""
+    preia = preia_pentru_examen if pentru_examen else preia_din_teanc
+
+    def grila(n):
+        return preia(
+            ("quiz", ctx.hash_material, dif, ctx.limba),
+            n,
+            "intrebare",
+            lambda: genereaza_teanc_quiz(
+                ctx.client, ctx.selectate, ctx.eticheta, dif, ctx.limba
+            ),
+        )
+
+    def adevarat_fals(n):
+        return preia(
+            ("af", ctx.hash_material, dif, ctx.limba),
+            n,
+            "intrebare",
+            lambda: genereaza_teanc_af(
+                ctx.client, ctx.selectate, ctx.eticheta, dif, ctx.limba
+            ),
+        )
+
+    if tip == TIP_GRILA:
+        return grila(nr)
+    if tip == TIP_AF:
+        return adevarat_fals(nr)
+
+    # amestecat: jumătate grilă, jumătate Adevărat/Fals, în ordine amestecată
+    n_af = nr // 2
+    n_grila = nr - n_af
+    el1, model1, nota1 = grila(n_grila)
+    el2, model2, nota2 = adevarat_fals(n_af)
+    elemente = el1 + el2
+    random.shuffle(elemente)
+    model = model1 if model1 == model2 else f"{model1} + {model2}"
+    nota = nota1 if nota1 == nota2 else f"{nota1}; {nota2}"
+    return elemente, model, nota
+
+
 # ---------------- QUIZ ----------------
 def tab_quiz(ctx):
     st.caption(DESCRIERI_TAB["quiz"])
+    tip = st.selectbox("Tip de întrebări", TIPURI_INTREBARI, key="quiz_tip")
     col1, col2 = st.columns(2)
     nr = col1.number_input("Număr întrebări", 3, 20, 5)
     dif = col2.selectbox("Dificultate", ["ușoară", "medie", "grea"], index=1)
@@ -87,14 +134,7 @@ def tab_quiz(ctx):
     if st.button("Generează quiz"):
         with st.spinner("Pregătesc quiz-ul..."):
             try:
-                elemente, model_folosit, nota = preia_din_teanc(
-                    ("quiz", ctx.hash_material, dif, ctx.limba),
-                    nr,
-                    "intrebare",
-                    lambda: genereaza_teanc_quiz(
-                        ctx.client, ctx.selectate, ctx.eticheta, dif, ctx.limba
-                    ),
-                )
+                elemente, model_folosit, nota = alege_intrebari(ctx, tip, nr, dif)
                 quiz = [amesteca_variante(q) for q in elemente]
                 # șterge răspunsurile din quiz-ul anterior
                 for k in list(st.session_state.keys()):
@@ -120,7 +160,7 @@ def tab_quiz(ctx):
         raspunsuri = {}
         for i, q in enumerate(quiz):
             raspunsuri[i] = st.radio(
-                f"{i + 1}. {q['intrebare']}",
+                f"{i + 1}. {text_intrebare(q)}",
                 q["variante"],
                 index=None,
                 key=f"q{i}",
@@ -145,6 +185,7 @@ def tab_quiz(ctx):
 def tab_examen(ctx):
     def formular_examen():
         st.caption(DESCRIERI_TAB["examen"])
+        tip_ex = st.selectbox("Tip de întrebări", TIPURI_INTREBARI, key="ex_tip")
         c1, c2, c3 = st.columns(3)
         nr_ex = c1.number_input("Număr întrebări", 5, 30, 10, key="ex_nr")
         dif_ex = c2.selectbox(
@@ -155,13 +196,8 @@ def tab_examen(ctx):
         if st.button("Începe examenul", key="ex_start"):
             with st.spinner("Pregătesc examenul..."):
                 try:
-                    elemente, model_folosit, nota = preia_pentru_examen(
-                        ("quiz", ctx.hash_material, dif_ex, ctx.limba),
-                        nr_ex,
-                        "intrebare",
-                        lambda: genereaza_teanc_quiz(
-                            ctx.client, ctx.selectate, ctx.eticheta, dif_ex, ctx.limba
-                        ),
+                    elemente, model_folosit, nota = alege_intrebari(
+                        ctx, tip_ex, nr_ex, dif_ex, pentru_examen=True
                     )
                     return {
                         "sursa": "document",

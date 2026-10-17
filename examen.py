@@ -6,7 +6,7 @@ import time
 import streamlit as st
 
 from export_html import html_examen
-from utile import eticheta_grup, formateaza_timp, md, sursa_text
+from utile import eticheta_grup, formateaza_timp, md, sursa_text, text_intrebare
 
 
 def afiseaza_intrebare(q, i, cheie):
@@ -14,7 +14,7 @@ def afiseaza_intrebare(q, i, cheie):
         with st.container(border=True):
             st.markdown(md(q["pasaj"], q))
     st.radio(
-        md(f"{i + 1}. {q['intrebare']}", q),
+        md(f"{i + 1}. {text_intrebare(q)}", q),
         q["variante"],
         index=None,
         key=cheie,
@@ -124,7 +124,7 @@ def afiseaza_rezultat(ex, nume):
             stare = "Corect" if ok else "Greșit"
             if q.get("pasaj"):
                 st.markdown(md(q["pasaj"], q))
-            st.markdown(f"**{i + 1}. {md(q['intrebare'], q)}**")
+            st.markdown(f"**{i + 1}. {md(text_intrebare(q), q)}**")
             st.markdown(
                 f"{stare}. Răspunsul tău: {md(ales, q) if ales else 'fără răspuns'}"
             )

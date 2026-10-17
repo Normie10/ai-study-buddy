@@ -2,7 +2,7 @@
 
 from html import escape as esc
 
-from utile import formateaza_timp, sursa_text
+from utile import formateaza_timp, sursa_text, text_intrebare
 
 CSS_PRINT = """
 body { font-family: Arial, Helvetica, sans-serif; max-width: 800px;
@@ -64,16 +64,23 @@ def html_quiz(quiz):
     parti = ['<p class="mic">Nume: ______________ &nbsp; Data: ______________</p>']
     for i, q in enumerate(quiz, start=1):
         parti.append('<div class="intrebare">')
-        parti.append(f"<p>{i}. {e(q['intrebare'])}</p>")
+        parti.append(f"<p>{i}. {e(text_intrebare(q))}</p>")
         for j, v in enumerate(q["variante"]):
-            parti.append(f'<div class="varianta">&#9744; {litere[j]}. {e(v)}</div>')
+            if q.get("tip_intrebare") == "af":
+                parti.append(f'<div class="varianta">&#9744; {e(v)}</div>')
+            else:
+                parti.append(f'<div class="varianta">&#9744; {litere[j]}. {e(v)}</div>')
         parti.append("</div>")
 
     parti.append('<div class="cheie"><h2>Răspunsuri corecte</h2>')
     for i, q in enumerate(quiz, start=1):
         corect = q["corect"]
+        if q.get("tip_intrebare") == "af":
+            raspuns = q["variante"][corect]
+        else:
+            raspuns = f"{litere[corect]}. {q['variante'][corect]}"
         parti.append(
-            f"<p>{i}. <b>{litere[corect]}. {e(q['variante'][corect])}</b> "
+            f"<p>{i}. <b>{e(raspuns)}</b> "
             f"<span class=\"mic\">({e(q.get('unitate', 'pagina'))} {e(q['pagina'])}) "
             f"{e(q['explicatie'])}</span></p>"
         )
@@ -118,7 +125,7 @@ def html_examen(titlu, scor, total, procent, folosit, de_recapitulat, detalii, m
             pasaj_html = e(q["pasaj"], q).replace("\n", "<br>")
             parti.append(f'<div class="pasaj">{pasaj_html}</div>')
         parti.append(
-            f'<p class="{clasa}">{i + 1}. {e(q["intrebare"], q)} '
+            f'<p class="{clasa}">{i + 1}. {e(text_intrebare(q), q)} '
             f'<span class="mic">({stare})</span></p>'
         )
         parti.append(

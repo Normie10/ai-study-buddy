@@ -23,6 +23,13 @@ MAX_DOCUMENTE_IN_MEMORIE = 200
 # Câte elemente cerem dintr-o singură cerere (teancul)
 DIM_TEANC_QUIZ = 30
 DIM_TEANC_CARDURI = 40
+DIM_TEANC_AF = 40
+
+# Tipurile de întrebări din Quiz și Examen
+TIP_GRILA = "Grilă (4 variante)"
+TIP_AF = "Adevărat / Fals"
+TIP_MIXT = "Amestecat"
+TIPURI_INTREBARI = [TIP_GRILA, TIP_AF, TIP_MIXT]
 
 # Întrebări către Google permise pe sesiune în secțiunea "Întreabă"
 MAX_INTREBARI_SESIUNE = 10
@@ -88,12 +95,13 @@ DISCLAIMER_SAT = (
 # ------------------------- texte afișate în aplicație -------------------------
 DESCRIERI_TAB = {
     "quiz": (
-        "Întrebări grilă din materialul tău, cu explicații și sursa fiecărui "
-        "răspuns. Poți descărca quiz-ul pentru printat."
+        "Întrebări grilă, Adevărat/Fals sau amestecate, din materialul tău, cu "
+        "explicații și sursa fiecărui răspuns. Poți descărca quiz-ul pentru printat."
     ),
     "examen": (
-        "Un test cu cronometru. La final primești scorul și un raport cu locurile "
-        "din document la care ai greșit cel mai mult."
+        "Un test cu cronometru, cu întrebări grilă, Adevărat/Fals sau amestecate. "
+        "La final primești scorul și un raport cu locurile din document la care "
+        "ai greșit cel mai mult."
     ),
     "carduri": (
         "Flashcarduri cu repetare: apeși „Știu” sau „Nu știu”, iar cardurile "
@@ -121,7 +129,7 @@ TEXT_GHID = """
 
 **Secțiuni**
 
-- **Quiz:** întrebări grilă cu explicații, care se pot printa.
+- **Quiz:** întrebări grilă sau Adevărat/Fals, cu explicații, care se pot printa.
 - **Examen:** test cu cronometru și raport cu locurile la care ai greșit.
 - **SAT:** întrebări în stilul SAT-ului digital, fără document. Merge direct,
   nu trebuie să încarci nimic.

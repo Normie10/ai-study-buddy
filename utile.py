@@ -22,6 +22,13 @@ def text_din_unitati(unitati, eticheta):
     return "\n\n".join(f"[{nume} {u['pagina']}]\n{u['text']}" for u in unitati)
 
 
+def text_intrebare(q):
+    """Textul întrebării, cu mențiunea „Adevărat sau fals” la afirmații."""
+    if q.get("tip_intrebare") == "af":
+        return f"Adevărat sau fals: {q['intrebare']}"
+    return q["intrebare"]
+
+
 def md(text, q):
     """Pregătește textul pentru Markdown. La Reading and Writing, semnul $ nu
     trebuie interpretat ca formulă. Reface și rândurile noi."""
