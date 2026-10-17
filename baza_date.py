@@ -109,10 +109,16 @@ def progres_utilizator(limita=50):
     rezultat = (
         _client()
         .table("progres")
-        .select("id, sectiune, scor, total, creat_la")
+        .select("id, sectiune, scor, total, creat_la, este_favorit")
         .eq("user_id", user.id)
         .order("creat_la", desc=True)
         .limit(limita)
         .execute()
     )
     return rezultat.data
+
+
+def seteaza_favorit(progres_id, favorit):
+    _client().table("progres").update({"este_favorit": favorit}).eq(
+        "id", progres_id
+    ).execute()
