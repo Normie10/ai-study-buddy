@@ -9,13 +9,14 @@ generare, ca să nu facem o cerere nouă la Google la fiecare verificare.
 """
 
 import json
+import unicodedata
 from collections import Counter
 
 import streamlit as st
 
 from generare import cere_model
 from memorie import preia_din_teanc
-from utile import eticheta_grup, norm, text_din_unitati
+from utile import eticheta_grup, text_din_unitati
 
 NUME = "Completează"
 ORDINE = 27  # poziția în listă: numerele mici apar primele
@@ -27,6 +28,14 @@ DESCRIERE = (
 
 CHEIE = "comp_sesiune"
 DIM_TEANC_COMPLETARE = 30  # cât cerem la Google dintr-o dată
+
+
+def _norm_comp(text):
+    """Litere mici + elimină diacriticele (ă, â, î, ș, ț), pentru comparare strictă
+    dar tolerantă la diacritice."""
+    text = str(text).strip().lower()
+    text = unicodedata.normalize("NFD", text)
+    return "".join(c for c in text if unicodedata.category(c) != "Mn")
 
 
 # ------------------------- generare (din document) -------------------------
@@ -109,8 +118,10 @@ def _verifica(idx, raspuns_dat, q):
     s = st.session_state.get(CHEIE)
     if not s or idx in s["raspunsuri"]:
         return
-    valori_bune = {norm(q["raspuns"])} | {norm(v) for v in q.get("variante_acceptate", [])}
-    e_corect = norm(raspuns_dat) in valori_bune
+    valori_bune = {_norm_comp(q["raspuns"])} | {
+        _norm_comp(v) for v in q.get("variante_acceptate", [])
+    }
+    e_corect = _norm_comp(raspuns_dat) in valori_bune
     s["raspunsuri"][idx] = (raspuns_dat, e_corect)
 
 
