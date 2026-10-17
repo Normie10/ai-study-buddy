@@ -1,15 +1,17 @@
 """AI Study Buddy: fișierul principal (aspectul paginii).
 
 Restul codului e împărțit în fișiere separate:
-  config.py       setări și texte
-  utile.py        funcții mici
-  documente.py    citirea documentelor și alegerea unei părți
-  generare.py     modelul AI (prompturi)
-  memorie.py      memoria comună (teancurile de întrebări)
-  export_html.py  fișierele de descărcat și printat
-  examen.py       testul cu cronometru
-  taburi.py       secțiunile de bază (Quiz, Examen, SAT, Flashcarduri...)
-  sectiuni/       secțiuni noi: fiecare fișier de aici apare singur în aplicație
+  config.py        setări și texte
+  utile.py         funcții mici
+  documente.py     citirea documentelor și alegerea unei părți
+  generare.py      modelul AI (prompturi)
+  memorie.py       memoria comună (teancurile de întrebări)
+  export_html.py   fișierele de descărcat și printat
+  examen.py        testul cu cronometru
+  taburi.py         secțiunile de bază (Quiz, Examen, SAT, Flashcarduri...)
+  sectiuni/        secțiuni noi: fiecare fișier de aici apare singur în aplicație
+  baza_date.py     conexiunea la Supabase (cont, materiale salvate)
+  autentificare.py ecranul de login / cont nou
 """
 
 import importlib
@@ -34,6 +36,14 @@ from dotenv import load_dotenv  # noqa: E402
 from google import genai  # noqa: E402
 from google.genai import types  # noqa: E402
 
+from autentificare import ecran_autentificare  # noqa: E402
+from baza_date import (  # noqa: E402
+    delogheaza,
+    materiale_utilizator,
+    salveaza_material,
+    sterge_material,
+    utilizator_curent,
+)
 from config import (  # noqa: E402
     CSS_APP,
     DESCRIERI_TAB,
@@ -131,6 +141,40 @@ def sterge_textul():
     st.session_state["caseta_text"] = ""
 
 
+def incarca_material_salvat(continut):
+    """Pune conținutul unui material salvat în caseta de text, ca să fie
+    folosit ca și cum tocmai l-ai lipit."""
+    st.session_state["sursa_material"] = "Lipește text"
+    st.session_state["text_lipit"] = continut
+    st.session_state["caseta_text"] = continut
+
+
+def panou_materiale_salvate():
+    """Lista materialelor salvate pe cont, cu opțiune de încărcare și ștergere."""
+    try:
+        materiale = materiale_utilizator()
+    except Exception as e_mat:
+        st.warning(f"Nu am putut încărca materialele salvate: {e_mat}")
+        return
+
+    if not materiale:
+        st.caption("Nu ai niciun material salvat pe cont încă.")
+        return
+
+    for m in materiale:
+        c1, c2, c3 = st.columns([3, 1, 1])
+        c1.write(m["nume"])
+        if c2.button("Încarcă", key=f"mat_inc_{m['id']}"):
+            incarca_material_salvat(m["continut"])
+            st.rerun()
+        if c3.button("Șterge", key=f"mat_st_{m['id']}"):
+            try:
+                sterge_material(m["id"])
+                st.rerun()
+            except Exception as e_st:
+                st.error(f"Nu am putut șterge: {e_st}")
+
+
 def pasul_material():
     """Pasul 1: limba și materialul. Întoarce (limba, material, părțile alese, hash)."""
     mat = None
@@ -139,6 +183,9 @@ def pasul_material():
 
     with st.container(border=True):
         st.subheader("1. Alege materialul")
+
+        with st.expander("Materialele mele salvate"):
+            panou_materiale_salvate()
 
         limba = st.selectbox(
             "Limba întrebărilor și a explicațiilor",
@@ -178,7 +225,14 @@ def pasul_material():
             text_curent = st.session_state.get("text_lipit", "")
             if text_curent.strip():
                 mat = material_din_text(text_curent)
-                st.button("Șterge textul", on_click=sterge_textul)
+                b1, b2 = st.columns(2)
+                b1.button("Șterge textul", on_click=sterge_textul)
+                if b2.button("Salvează acest material pe cont"):
+                    try:
+                        salveaza_material(mat["nume"], text_curent)
+                        st.success("Material salvat pe cont.")
+                    except Exception as e_salv:
+                        st.error(f"Nu am putut salva: {e_salv}")
 
         if mat is not None and not are_text(mat):
             st.error(
@@ -203,9 +257,23 @@ def pasul_material():
     return limba, mat, selectate, hash_material
 
 
+# ------------------------- autentificare -------------------------
+if utilizator_curent() is None:
+    ecran_autentificare()
+    st.stop()
+
 # ------------------------- pagina -------------------------
 st.markdown(CSS_APP, unsafe_allow_html=True)
-st.title("AI Study Buddy")
+
+col_titlu, col_cont = st.columns([4, 1])
+with col_titlu:
+    st.title("AI Study Buddy")
+with col_cont:
+    st.caption(utilizator_curent().email)
+    if st.button("Delogare"):
+        delogheaza()
+        st.rerun()
+
 st.caption(
     "Transformă materialele tale în quiz-uri, teste cu cronometru, flashcarduri "
     "și rezumate."
