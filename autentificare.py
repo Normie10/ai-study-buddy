@@ -1,8 +1,9 @@
-"""Ecranul de login / creare cont, afișat înainte de restul aplicației."""
+"""Ecranul de login / creare cont, afișat înainte de restul aplicației.
+Oferă și opțiunea de a continua ca vizitator, fără cont."""
 
 import streamlit as st
 
-from baza_date import autentifica, inregistreaza
+from baza_date import autentifica, inregistreaza, intra_ca_vizitator
 
 
 def ecran_autentificare():
@@ -58,3 +59,12 @@ def ecran_autentificare():
                         st.rerun()
                 except Exception as e_reg:
                     st.error(f"Nu am putut crea contul: {e_reg}")
+
+    st.divider()
+    st.caption(
+        "Preferi să încerci fără cont? Poți oricând să-ți faci unul mai "
+        "târziu, dar materialele și progresul nu se vor salva."
+    )
+    if st.button("Continuă fără cont"):
+        intra_ca_vizitator()
+        st.rerun()
