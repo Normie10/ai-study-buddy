@@ -4,7 +4,6 @@ refresh de pagină, folosind un cookie cu un token de reîmprospătare."""
 
 import datetime
 import hashlib
-import time
 
 import extra_streamlit_components as stx
 import streamlit as st
@@ -18,6 +17,15 @@ def _cookie_manager():
     if "cookie_manager" not in st.session_state:
         st.session_state["cookie_manager"] = stx.CookieManager(key="cm_studybuddy")
     return st.session_state["cookie_manager"]
+
+
+def toate_cookiurile():
+    """Trebuie apelată o singură dată, devreme în pagină, la fiecare rulare —
+    dă ocazia managerului să citească cookie-urile din browser."""
+    try:
+        return _cookie_manager().get_all(key="citeste_toate_cookie") or {}
+    except Exception:
+        return {}
 
 
 def _client():
@@ -41,17 +49,15 @@ def _salveaza_sesiune(sesiune):
         expires_at=datetime.datetime.now() + datetime.timedelta(days=30),
         key="set_refresh_cookie",
     )
-    # mică pauză, ca browserul să apuce să scrie efectiv cookie-ul înainte
-    # de un eventual rerun imediat
-    time.sleep(0.6)
 
 
-def incearca_restaureaza_sesiune():
-    """La încărcarea paginii, dacă există un cookie valid și nimeni nu e
-    logat încă în sesiunea curentă, reautentifică automat utilizatorul."""
+def incearca_restaureaza_sesiune(cookies):
+    """Dacă există un cookie valid (din `cookies`, citit deja de
+    toate_cookiurile()) și nimeni nu e logat încă în sesiunea curentă,
+    reautentifică automat utilizatorul."""
     if utilizator_curent() is not None:
         return
-    token = _cookie_manager().get(NUME_COOKIE)
+    token = cookies.get(NUME_COOKIE)
     if not token:
         return
     try:
