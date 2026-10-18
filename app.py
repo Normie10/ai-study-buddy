@@ -11,7 +11,7 @@ Restul codului e împărțit în fișiere separate:
   taburi.py        secțiunile de bază (Quiz, Examen, SAT, Flashcarduri...)
   sectiuni/        secțiuni noi: fiecare fișier de aici apare singur în aplicație
   baza_date.py     conexiunea la Supabase (cont, materiale salvate, progres)
-  autentificare.py ecranul de login / cont nou
+  autentificare.py ecranul de login / cont nou / vizitator
 """
 
 import importlib
@@ -39,6 +39,8 @@ from google.genai import types  # noqa: E402
 from autentificare import ecran_autentificare  # noqa: E402
 from baza_date import (  # noqa: E402
     delogheaza,
+    este_vizitator,
+    iese_din_mod_vizitator,
     incearca_restaureaza_sesiune,
     materiale_utilizator,
     salveaza_material,
@@ -159,7 +161,15 @@ def incarca_material_salvat(continut):
 
 
 def panou_materiale_salvate():
-    """Lista materialelor salvate pe cont, cu opțiune de încărcare și ștergere."""
+    """Lista materialelor salvate pe cont, cu opțiune de încărcare și ștergere.
+    Pentru un vizitator (fără cont), arată doar un mesaj explicativ."""
+    if este_vizitator():
+        st.caption(
+            "Materialele salvate sunt disponibile doar cu un cont. "
+            "Poți să-ți faci unul oricând, din butonul de sus."
+        )
+        return
+
     try:
         materiale = materiale_utilizator()
     except Exception as e_mat:
@@ -236,12 +246,13 @@ def pasul_material():
                 mat = material_din_text(text_curent)
                 b1, b2 = st.columns(2)
                 b1.button("Șterge textul", on_click=sterge_textul)
-                if b2.button("Salvează acest material pe cont"):
-                    try:
-                        salveaza_material(mat["nume"], text_curent)
-                        st.success("Material salvat pe cont.")
-                    except Exception as e_salv:
-                        st.error(f"Nu am putut salva: {e_salv}")
+                if not este_vizitator():
+                    if b2.button("Salvează acest material pe cont"):
+                        try:
+                            salveaza_material(mat["nume"], text_curent)
+                            st.success("Material salvat pe cont.")
+                        except Exception as e_salv:
+                            st.error(f"Nu am putut salva: {e_salv}")
 
         if mat is not None and not are_text(mat):
             st.error(
@@ -266,7 +277,7 @@ def pasul_material():
     return limba, mat, selectate, hash_material
 
 
-if utilizator_curent() is None:
+if utilizator_curent() is None and not este_vizitator():
     ecran_autentificare()
     st.stop()
 
@@ -277,10 +288,22 @@ col_titlu, col_cont = st.columns([4, 1])
 with col_titlu:
     st.title("AI Study Buddy")
 with col_cont:
-    st.caption(utilizator_curent().email)
-    if st.button("Delogare"):
-        delogheaza()
-        st.rerun()
+    if utilizator_curent() is not None:
+        st.caption(utilizator_curent().email)
+        if st.button("Delogare"):
+            delogheaza()
+            st.rerun()
+    else:
+        st.caption("Vizitator")
+        if st.button("Creează cont"):
+            iese_din_mod_vizitator()
+            st.rerun()
+
+if este_vizitator():
+    st.info(
+        "Ești în modul vizitator — materialele și progresul nu se salvează. "
+        "Apasă „Creează cont” din colțul din dreapta sus, oricând vrei."
+    )
 
 st.caption(
     "Transformă materialele tale în quiz-uri, teste cu cronometru, flashcarduri "
