@@ -4,3 +4,4 @@ google-genai
 python-dotenv
 python-docx
 supabase
+extra-streamlit-components
