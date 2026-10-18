@@ -1,7 +1,7 @@
 """Conexiunea la Supabase: autentificare (cont, login, logout), materialele
 salvate și progresul (scorurile) pe cont. Ține minte sesiunea și după un
 refresh de pagină, folosind un cookie cu token-urile de sesiune. Suportă și
-un mod „vizitator”, fără cont, fără date salvate."""
+un mod „vizitator”, fără cont, și resetarea parolei prin email."""
 
 import datetime
 import hashlib
@@ -142,6 +142,29 @@ def utilizator_curent():
     """Întoarce utilizatorul autentificat, sau None (inclusiv în modul
     vizitator — vizitatorul nu are un cont real)."""
     return st.session_state.get("utilizator")
+
+
+# ------------------------- resetare parolă -------------------------
+def trimite_email_resetare(email):
+    """Trimite emailul cu link-ul de resetare a parolei."""
+    app_url = st.secrets["APP_URL"]
+    _client().auth.reset_password_for_email(email, {"redirect_to": app_url})
+
+
+def seteaza_sesiune_din_recuperare(access_token, refresh_token):
+    """Folosit când cineva vine din link-ul de resetare a parolei: pornește o
+    sesiune temporară, suficientă cât să-și schimbe parola."""
+    rezultat = _client().auth.set_session(access_token, refresh_token)
+    if rezultat.session is not None:
+        st.session_state["utilizator"] = rezultat.session.user
+        _scrie_cookie_sesiune(
+            rezultat.session.access_token, rezultat.session.refresh_token
+        )
+    return rezultat.session is not None
+
+
+def seteaza_parola_noua(parola_noua):
+    _client().auth.update_user({"password": parola_noua})
 
 
 # ------------------------- materialele salvate -------------------------
