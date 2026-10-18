@@ -1,8 +1,8 @@
 """Secțiune: Progresul meu.
 
-Istoricul scorurilor obținute la Quiz, Examen, SAT și Adevărat/Fals. Orice
-rezultat poate fi marcat cu o steluță (favorit), ca să fie ușor de găsit
-printre multe încercări.
+Istoricul scorurilor obținute la Quiz, Examen, SAT, Adevărat/Fals și
+Completează. Orice rezultat poate fi marcat cu o steluță (favorit), ca să fie
+ușor de găsit printre multe încercări. Poți filtra ce tip de rezultate vezi.
 """
 
 import streamlit as st
@@ -13,8 +13,9 @@ NUME = "Progresul meu"
 ORDINE = 99  # apare ultima, după celelalte secțiuni
 CERE_MATERIAL = False
 DESCRIERE = (
-    "Istoricul scorurilor tale la Quiz, Examen, SAT și Adevărat/Fals. Poți "
-    "marca rezultatele importante cu o steluță, ca să le găsești ușor."
+    "Istoricul scorurilor tale la Quiz, Examen, SAT, Adevărat/Fals și "
+    "Completează. Poți marca rezultatele importante cu o steluță și poți "
+    "filtra după tip."
 )
 
 NUME_SECTIUNE = {
@@ -22,6 +23,7 @@ NUME_SECTIUNE = {
     "examen": "Examen",
     "sat": "SAT",
     "af": "Adevărat/Fals",
+    "comp": "Completează",
 }
 
 
@@ -60,8 +62,25 @@ def afiseaza(ctx):
         st.info("Nu ai niciun rezultat salvat încă. Termină un quiz sau un examen.")
         return
 
-    favorite = [r for r in istoric if r.get("este_favorit")]
-    restul = [r for r in istoric if not r.get("este_favorit")]
+    tipuri_prezente = sorted(
+        {r["sectiune"] for r in istoric},
+        key=lambda t: list(NUME_SECTIUNE.keys()).index(t) if t in NUME_SECTIUNE else 99,
+    )
+    optiuni = [NUME_SECTIUNE.get(t, t) for t in tipuri_prezente]
+    alese = st.multiselect(
+        "Arată doar", optiuni, default=optiuni, key="progres_filtru"
+    )
+    tipuri_alese = {
+        t for t in tipuri_prezente if NUME_SECTIUNE.get(t, t) in alese
+    }
+    istoric_filtrat = [r for r in istoric if r["sectiune"] in tipuri_alese]
+
+    if not istoric_filtrat:
+        st.info("Niciun rezultat pentru filtrul ales.")
+        return
+
+    favorite = [r for r in istoric_filtrat if r.get("este_favorit")]
+    restul = [r for r in istoric_filtrat if not r.get("este_favorit")]
 
     if favorite:
         st.subheader("Favorite")
