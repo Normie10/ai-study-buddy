@@ -1,9 +1,17 @@
 """Ecranul de login / creare cont, afișat înainte de restul aplicației.
-Oferă și opțiunea de a continua ca vizitator, fără cont."""
+Oferă și opțiunea de a continua ca vizitator, fără cont, și fluxul de
+resetare a parolei."""
 
 import streamlit as st
 
-from baza_date import autentifica, inregistreaza, intra_ca_vizitator
+from baza_date import (
+    autentifica,
+    inregistreaza,
+    intra_ca_vizitator,
+    seteaza_parola_noua,
+    seteaza_sesiune_din_recuperare,
+    trimite_email_resetare,
+)
 
 
 def ecran_autentificare():
@@ -12,6 +20,10 @@ def ecran_autentificare():
         "Intră în cont sau creează unul gratuit, ca să-ți salvezi progresul "
         "și materialele."
     )
+
+    if st.session_state.get("arata_resetare"):
+        _formular_cerere_resetare()
+        return
 
     tab_login, tab_inregistrare = st.tabs(["Intră în cont", "Cont nou"])
 
@@ -29,6 +41,10 @@ def ecran_autentificare():
                     st.rerun()
                 except Exception:
                     st.error("Email sau parolă greșite.")
+
+        if st.button("Ai uitat parola?", key="link_resetare"):
+            st.session_state["arata_resetare"] = True
+            st.rerun()
 
     with tab_inregistrare:
         with st.form("form_inregistrare"):
@@ -68,3 +84,69 @@ def ecran_autentificare():
     if st.button("Continuă fără cont"):
         intra_ca_vizitator()
         st.rerun()
+
+
+def _formular_cerere_resetare():
+    st.subheader("Resetează parola")
+    st.caption("Scrie emailul contului tău. Îți trimitem un link de resetare.")
+    with st.form("form_cerere_resetare"):
+        email = st.text_input("Email", key="reset_email")
+        trimis = st.form_submit_button("Trimite link-ul", type="primary")
+    if trimis:
+        if not email:
+            st.error("Scrie un email.")
+        else:
+            try:
+                trimite_email_resetare(email)
+                st.success(
+                    "Dacă există un cont cu acest email, ai primit un link de "
+                    "resetare. Verifică și folderul de spam."
+                )
+            except Exception as e:
+                st.error(f"Nu am putut trimite emailul: {e}")
+
+    if st.button("Înapoi la login", key="inapoi_login"):
+        st.session_state.pop("arata_resetare", None)
+        st.rerun()
+
+
+def ecran_parola_noua(access_token, refresh_token):
+    """Ecranul în care cineva venit din link-ul de resetare își alege o
+    parolă nouă."""
+    st.title("AI Study Buddy")
+    st.subheader("Setează o parolă nouă")
+
+    if not st.session_state.get("sesiune_recuperare_activa"):
+        ok = seteaza_sesiune_din_recuperare(access_token, refresh_token)
+        if not ok:
+            st.error(
+                "Link-ul nu mai este valid (poate a expirat sau a fost deja "
+                "folosit). Cere unul nou din ecranul de login."
+            )
+            return
+        st.session_state["sesiune_recuperare_activa"] = True
+
+    with st.form("form_parola_noua"):
+        parola_noua = st.text_input(
+            "Parolă nouă (minimum 6 caractere)", type="password", key="pn_parola"
+        )
+        parola_noua2 = st.text_input(
+            "Confirmă parola nouă", type="password", key="pn_parola2"
+        )
+        trimis = st.form_submit_button("Salvează parola nouă", type="primary")
+
+    if trimis:
+        if parola_noua != parola_noua2:
+            st.error("Parolele nu coincid.")
+        elif len(parola_noua) < 6:
+            st.error("Parola trebuie să aibă cel puțin 6 caractere.")
+        else:
+            try:
+                seteaza_parola_noua(parola_noua)
+                st.session_state.pop("sesiune_recuperare_activa", None)
+                st.success("Parola a fost schimbată. Poți continua direct în cont.")
+                st.query_params.clear()
+                if st.button("Continuă în aplicație"):
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Nu am putut schimba parola: {e}")
