@@ -38,24 +38,29 @@ def _client():
     return st.session_state["supabase_client"]
 
 
-def _salveaza_sesiune(sesiune):
-    """Ține minte utilizatorul în session_state și pune token-ul de
-    reîmprospătare într-un cookie, ca sesiunea să supraviețuiască unui
-    refresh de pagină (cookie-ul ține 30 de zile)."""
-    st.session_state["utilizator"] = sesiune.user
+def _scrie_cookie_token(refresh_token):
     _cookie_manager().set(
         NUME_COOKIE,
-        sesiune.refresh_token,
+        refresh_token,
         expires_at=datetime.datetime.now() + datetime.timedelta(days=30),
         key="set_refresh_cookie",
     )
 
 
+def _salveaza_sesiune(sesiune):
+    """Ține minte utilizatorul în session_state și pune token-ul de
+    reîmprospătare într-un cookie, ca sesiunea să supraviețuiască unui
+    refresh de pagină (cookie-ul ține 30 de zile)."""
+    st.session_state["utilizator"] = sesiune.user
+    _scrie_cookie_token(sesiune.refresh_token)
+
+
 def incearca_restaureaza_sesiune(cookies):
     """Dacă există un cookie valid (din `cookies`, citit deja de
     toate_cookiurile()) și nimeni nu e logat încă în sesiunea curentă,
-    reautentifică automat utilizatorul. Ține minte, temporar, și rezultatul
-    exact al încercării, pentru depanare."""
+    reautentifică automat utilizatorul. IMPORTANT: Supabase schimbă
+    token-ul la fiecare folosire, așa că rescriem cookie-ul cu noul token
+    de fiecare dată — altfel a doua reîncercare pică mereu."""
     if utilizator_curent() is not None:
         return
     token = cookies.get(NUME_COOKIE)
@@ -66,6 +71,7 @@ def incearca_restaureaza_sesiune(cookies):
         rezultat = _client().auth.refresh_session(token)
         if rezultat.session is not None:
             st.session_state["utilizator"] = rezultat.session.user
+            _scrie_cookie_token(rezultat.session.refresh_token)
             st.session_state["debug_sesiune"] = "succes"
         else:
             st.session_state["debug_sesiune"] = "răspuns fără sesiune"
