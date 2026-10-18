@@ -16,6 +16,7 @@ from collections import Counter
 
 import streamlit as st
 
+from baza_date import salveaza_progres
 from generare import cere_model
 from memorie import preia_din_teanc
 from utile import eticheta_grup, text_din_unitati
@@ -157,6 +158,7 @@ def _porneste(intrebari, info, hash_material):
         "info": info,
         "idx": 0,
         "raspunsuri": {},  # poziția -> (text_dat, e_corect, aproape)
+        "progres_salvat": False,
     }
 
 
@@ -276,6 +278,10 @@ def _rezultate(s):
     ]
     scor = total - len(gresite)
     procent = round(100 * scor / total)
+
+    if not s.get("progres_salvat"):
+        salveaza_progres("comp", scor, total)
+        s["progres_salvat"] = True
 
     st.progress(1.0, text="Ai terminat")
     c1, c2 = st.columns(2)
