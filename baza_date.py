@@ -54,18 +54,23 @@ def _salveaza_sesiune(sesiune):
 def incearca_restaureaza_sesiune(cookies):
     """Dacă există un cookie valid (din `cookies`, citit deja de
     toate_cookiurile()) și nimeni nu e logat încă în sesiunea curentă,
-    reautentifică automat utilizatorul."""
+    reautentifică automat utilizatorul. Ține minte, temporar, și rezultatul
+    exact al încercării, pentru depanare."""
     if utilizator_curent() is not None:
         return
     token = cookies.get(NUME_COOKIE)
     if not token:
+        st.session_state["debug_sesiune"] = "fără cookie"
         return
     try:
         rezultat = _client().auth.refresh_session(token)
         if rezultat.session is not None:
             st.session_state["utilizator"] = rezultat.session.user
-    except Exception:
-        pass
+            st.session_state["debug_sesiune"] = "succes"
+        else:
+            st.session_state["debug_sesiune"] = "răspuns fără sesiune"
+    except Exception as e:
+        st.session_state["debug_sesiune"] = f"eroare: {e}"
 
 
 # ------------------------- cont și autentificare -------------------------
