@@ -2,7 +2,9 @@
 salvate și progresul (scorurile) pe cont. Ține minte sesiunea și după un
 refresh de pagină, folosind un cookie cu un token de reîmprospătare."""
 
+import datetime
 import hashlib
+import time
 
 import extra_streamlit_components as stx
 import streamlit as st
@@ -36,9 +38,12 @@ def _salveaza_sesiune(sesiune):
     _cookie_manager().set(
         NUME_COOKIE,
         sesiune.refresh_token,
-        max_age=30 * 24 * 60 * 60,
+        expires_at=datetime.datetime.now() + datetime.timedelta(days=30),
         key="set_refresh_cookie",
     )
+    # mică pauză, ca browserul să apuce să scrie efectiv cookie-ul înainte
+    # de un eventual rerun imediat
+    time.sleep(0.6)
 
 
 def incearca_restaureaza_sesiune():
@@ -52,7 +57,7 @@ def incearca_restaureaza_sesiune():
     try:
         rezultat = _client().auth.refresh_session(token)
         if rezultat.session is not None:
-            _salveaza_sesiune(rezultat.session)
+            st.session_state["utilizator"] = rezultat.session.user
     except Exception:
         pass
 
