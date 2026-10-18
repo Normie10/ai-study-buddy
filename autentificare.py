@@ -112,7 +112,9 @@ def _formular_cerere_resetare():
 
 def ecran_parola_noua(access_token, refresh_token):
     """Ecranul în care cineva venit din link-ul de resetare își alege o
-    parolă nouă."""
+    parolă nouă. Rămâne pe acest ecran până apasă explicit butonul de final,
+    indiferent de rerun-urile automate declanșate pe parcurs (de exemplu la
+    scrierea cookie-ului de sesiune)."""
     st.title("AI Study Buddy")
     st.subheader("Setează o parolă nouă")
 
@@ -125,6 +127,20 @@ def ecran_parola_noua(access_token, refresh_token):
             )
             return
         st.session_state["sesiune_recuperare_activa"] = True
+
+    if st.session_state.get("parola_schimbata"):
+        st.success("Parola a fost schimbată. Poți continua direct în cont.")
+        if st.button("Continuă în aplicație", key="continua_dupa_resetare"):
+            for cheie in (
+                "in_recuperare_parola",
+                "recuperare_access_token",
+                "recuperare_refresh_token",
+                "sesiune_recuperare_activa",
+                "parola_schimbata",
+            ):
+                st.session_state.pop(cheie, None)
+            st.rerun()
+        return
 
     with st.form("form_parola_noua"):
         parola_noua = st.text_input(
@@ -143,10 +159,7 @@ def ecran_parola_noua(access_token, refresh_token):
         else:
             try:
                 seteaza_parola_noua(parola_noua)
-                st.session_state.pop("sesiune_recuperare_activa", None)
-                st.success("Parola a fost schimbată. Poți continua direct în cont.")
-                st.query_params.clear()
-                if st.button("Continuă în aplicație"):
-                    st.rerun()
+                st.session_state["parola_schimbata"] = True
+                st.rerun()
             except Exception as e:
                 st.error(f"Nu am putut schimba parola: {e}")
