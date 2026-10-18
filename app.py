@@ -38,11 +38,13 @@ from google.genai import types  # noqa: E402
 
 from autentificare import ecran_autentificare  # noqa: E402
 from baza_date import (  # noqa: E402
+    NUME_COOKIE,
     delogheaza,
     incearca_restaureaza_sesiune,
     materiale_utilizator,
     salveaza_material,
     sterge_material,
+    toate_cookiurile,
     utilizator_curent,
 )
 from config import (  # noqa: E402
@@ -72,6 +74,18 @@ from taburi import (  # noqa: E402
 from utile import fmt  # noqa: E402
 
 load_dotenv()
+
+# ------------------------- autentificare -------------------------
+# Citim cookie-urile o singură dată, devreme — managerul are nevoie de un
+# „rerun” automat ca să le primească efectiv din browser, de-aia facem asta
+# chiar la începutul paginii, înainte de orice altceva.
+cookies = toate_cookiurile()
+incearca_restaureaza_sesiune(cookies)
+
+# Mesaj temporar de depanare — îl scoatem după ce confirmăm că merge
+with st.sidebar:
+    st.caption(f"[debug] cookie găsit: {'DA' if cookies.get(NUME_COOKIE) else 'NU'}")
+    st.caption(f"[debug] logat: {'DA' if utilizator_curent() else 'NU'}")
 
 # Secțiunile de bază. "ordine" hotărăște poziția (numerele mici apar primele).
 SECTIUNI_DE_BAZA = [
@@ -257,9 +271,6 @@ def pasul_material():
 
     return limba, mat, selectate, hash_material
 
-
-# ------------------------- autentificare -------------------------
-incearca_restaureaza_sesiune()
 
 if utilizator_curent() is None:
     ecran_autentificare()
