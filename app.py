@@ -81,20 +81,21 @@ load_dotenv()
 # Supabase trimite link-ul de resetare cu token-urile ascunse după # (o
 # bucată din adresă pe care doar browser-ul o vede, nu și serverul). Acest
 # mic script JS le mută în adresa vizibilă (după ?), ca Streamlit să le poată
-# citi.
+# citi. Scriptul rulează într-un iframe, de-aia ne uităm la window.parent
+# (fereastra reală), nu la window (iframe-ul însuși).
 components.html(
     """
     <script>
-    if (window.location.hash && window.location.hash.includes('access_token')) {
-        const params = new URLSearchParams(window.location.hash.substring(1));
+    if (window.parent.location.hash && window.parent.location.hash.includes('access_token')) {
+        const params = new URLSearchParams(window.parent.location.hash.substring(1));
         const access_token = params.get('access_token');
         const refresh_token = params.get('refresh_token');
         const type = params.get('type');
         if (access_token && type === 'recovery') {
-            const newUrl = window.location.pathname + '?access_token=' +
+            const newUrl = window.parent.location.pathname + '?access_token=' +
                 encodeURIComponent(access_token) + '&refresh_token=' +
                 encodeURIComponent(refresh_token || '') + '&type=recovery';
-            window.location.replace(newUrl);
+            window.parent.location.replace(newUrl);
         }
     }
     </script>
