@@ -1,12 +1,21 @@
 """Conexiunea la Supabase: autentificare (cont, login, logout), materialele
-salvate și progresul (scorurile) pe cont. Nu folosește deloc interfața
-(Streamlit), în afară de session_state, ca să țină minte clientul și
-utilizatorul curent."""
+salvate și progresul (scorurile) pe cont. Ține minte sesiunea și după un
+refresh de pagină, folosind un cookie cu un token de reîmprospătare."""
 
 import hashlib
 
+import extra_streamlit_components as stx
 import streamlit as st
 from supabase import create_client
+
+NUME_COOKIE = "sb_refresh_token"
+
+
+def _cookie_manager():
+    """Un singur manager de cookie-uri per sesiune de browser."""
+    if "cookie_manager" not in st.session_state:
+        st.session_state["cookie_manager"] = stx.CookieManager(key="cm_studybuddy")
+    return st.session_state["cookie_manager"]
 
 
 def _client():
@@ -19,13 +28,42 @@ def _client():
     return st.session_state["supabase_client"]
 
 
+def _salveaza_sesiune(sesiune):
+    """Ține minte utilizatorul în session_state și pune token-ul de
+    reîmprospătare într-un cookie, ca sesiunea să supraviețuiască unui
+    refresh de pagină (cookie-ul ține 30 de zile)."""
+    st.session_state["utilizator"] = sesiune.user
+    _cookie_manager().set(
+        NUME_COOKIE,
+        sesiune.refresh_token,
+        max_age=30 * 24 * 60 * 60,
+        key="set_refresh_cookie",
+    )
+
+
+def incearca_restaureaza_sesiune():
+    """La încărcarea paginii, dacă există un cookie valid și nimeni nu e
+    logat încă în sesiunea curentă, reautentifică automat utilizatorul."""
+    if utilizator_curent() is not None:
+        return
+    token = _cookie_manager().get(NUME_COOKIE)
+    if not token:
+        return
+    try:
+        rezultat = _client().auth.refresh_session(token)
+        if rezultat.session is not None:
+            _salveaza_sesiune(rezultat.session)
+    except Exception:
+        pass
+
+
 # ------------------------- cont și autentificare -------------------------
 def inregistreaza(email, parola):
     """Creează un cont nou. Întoarce True dacă e nevoie de confirmare prin
     email, False dacă utilizatorul e deja autentificat (fără confirmare)."""
     rezultat = _client().auth.sign_up({"email": email, "password": parola})
     if rezultat.session is not None:
-        st.session_state["utilizator"] = rezultat.user
+        _salveaza_sesiune(rezultat.session)
         return False
     return True
 
@@ -34,7 +72,7 @@ def autentifica(email, parola):
     rezultat = _client().auth.sign_in_with_password(
         {"email": email, "password": parola}
     )
-    st.session_state["utilizator"] = rezultat.user
+    _salveaza_sesiune(rezultat.session)
 
 
 def delogheaza():
@@ -42,6 +80,7 @@ def delogheaza():
         _client().auth.sign_out()
     except Exception:
         pass
+    _cookie_manager().delete(NUME_COOKIE, key="del_refresh_cookie")
     st.session_state.pop("utilizator", None)
     st.session_state.pop("supabase_client", None)
 
