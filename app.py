@@ -8,9 +8,9 @@ Restul codului e împărțit în fișiere separate:
   memorie.py       memoria comună (teancurile de întrebări)
   export_html.py   fișierele de descărcat și printat
   examen.py        testul cu cronometru
-  taburi.py         secțiunile de bază (Quiz, Examen, SAT, Flashcarduri...)
+  taburi.py        secțiunile de bază (Quiz, Examen, SAT, Flashcarduri...)
   sectiuni/        secțiuni noi: fiecare fișier de aici apare singur în aplicație
-  baza_date.py     conexiunea la Supabase (cont, materiale salvate)
+  baza_date.py     conexiunea la Supabase (cont, materiale salvate, progres)
   autentificare.py ecranul de login / cont nou
 """
 
@@ -39,6 +39,7 @@ from google.genai import types  # noqa: E402
 from autentificare import ecran_autentificare  # noqa: E402
 from baza_date import (  # noqa: E402
     delogheaza,
+    incearca_restaureaza_sesiune,
     materiale_utilizator,
     salveaza_material,
     sterge_material,
@@ -258,6 +259,8 @@ def pasul_material():
 
 
 # ------------------------- autentificare -------------------------
+incearca_restaureaza_sesiune()
+
 if utilizator_curent() is None:
     ecran_autentificare()
     st.stop()
