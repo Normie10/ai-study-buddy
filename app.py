@@ -143,4 +143,218 @@ def incarca_sectiuni_noi():
 
 
 def cheie_api():
-    cheie =
+    cheie = os.getenv("GOOGLE_API_KEY")
+    if cheie:
+        return cheie
+    try:
+        return st.secrets["GOOGLE_API_KEY"]
+    except Exception:
+        return None
+
+
+def sterge_textul():
+    st.session_state["text_lipit"] = ""
+    st.session_state["caseta_text"] = ""
+
+
+def incarca_material_salvat(continut):
+    """Pune conținutul unui material salvat în caseta de text, ca să fie
+    folosit ca și cum tocmai l-ai lipit."""
+    st.session_state["sursa_material"] = "Lipește text"
+    st.session_state["text_lipit"] = continut
+    st.session_state["caseta_text"] = continut
+
+
+def panou_materiale_salvate():
+    """Lista materialelor salvate pe cont, cu opțiune de încărcare și ștergere."""
+    try:
+        materiale = materiale_utilizator()
+    except Exception as e_mat:
+        st.warning(f"Nu am putut încărca materialele salvate: {e_mat}")
+        return
+
+    if not materiale:
+        st.caption("Nu ai niciun material salvat pe cont încă.")
+        return
+
+    for m in materiale:
+        c1, c2, c3 = st.columns([3, 1, 1])
+        c1.write(m["nume"])
+        if c2.button("Încarcă", key=f"mat_inc_{m['id']}"):
+            incarca_material_salvat(m["continut"])
+            st.rerun()
+        if c3.button("Șterge", key=f"mat_st_{m['id']}"):
+            try:
+                sterge_material(m["id"])
+                st.rerun()
+            except Exception as e_st:
+                st.error(f"Nu am putut șterge: {e_st}")
+
+
+def pasul_material():
+    """Pasul 1: limba și materialul. Întoarce (limba, material, părțile alese, hash)."""
+    mat = None
+    selectate = None
+    hash_material = None
+
+    with st.container(border=True):
+        st.subheader("1. Alege materialul")
+
+        with st.expander("Materialele mele salvate"):
+            panou_materiale_salvate()
+
+        limba = st.selectbox(
+            "Limba întrebărilor și a explicațiilor",
+            ["română", "engleză"],
+            help="La SAT, întrebările rămân în engleză; explicațiile urmează această limbă.",
+        )
+
+        sursa = st.radio(
+            "De unde iei materialul? (nu e nevoie pentru SAT)",
+            ["Încarcă un fișier", "Lipește text"],
+            horizontal=True,
+            key="sursa_material",
+        )
+
+        if sursa == "Încarcă un fișier":
+            fisier = st.file_uploader(
+                "PDF, Word (.docx) sau text (.txt, .md)",
+                type=["pdf", "docx", "txt", "md"],
+            )
+            if fisier:
+                try:
+                    mat = material_din_fisier(fisier)
+                except Exception as e_fis:
+                    st.error(f"Nu am putut citi fișierul: {e_fis}")
+        else:
+            with st.form("form_text"):
+                text_nou = st.text_area(
+                    f"Lipește aici textul (Ctrl+V). Maximum {fmt(MAX_CARACTERE_LIPIT)} de caractere.",
+                    height=250,
+                    max_chars=MAX_CARACTERE_LIPIT,
+                    key="caseta_text",
+                )
+                trimis_text = st.form_submit_button("Folosește acest text")
+            if trimis_text:
+                st.session_state["text_lipit"] = text_nou
+
+            text_curent = st.session_state.get("text_lipit", "")
+            if text_curent.strip():
+                mat = material_din_text(text_curent)
+                b1, b2 = st.columns(2)
+                b1.button("Șterge textul", on_click=sterge_textul)
+                if b2.button("Salvează acest material pe cont"):
+                    try:
+                        salveaza_material(mat["nume"], text_curent)
+                        st.success("Material salvat pe cont.")
+                    except Exception as e_salv:
+                        st.error(f"Nu am putut salva: {e_salv}")
+
+        if mat is not None and not are_text(mat):
+            st.error(
+                "Nu am găsit text în document. Dacă e un PDF scanat (poze cu text), "
+                "momentan nu pot citi text din imagini."
+            )
+            mat = None
+
+        if mat is not None:
+            n_unitati = len(mat["unitati"])
+            total_caractere = sum(len(u["text"]) for u in mat["unitati"])
+            st.success(
+                f"{mat['nume']}: {n_unitati} {PLURAL[mat['eticheta']]}, "
+                f"aproximativ {fmt(total_caractere)} de caractere"
+            )
+            selectate, hash_material = alege_interval(mat)
+
+            if st.session_state.get("hash_material") != hash_material:
+                curata_rezultate()
+                st.session_state["hash_material"] = hash_material
+
+    return limba, mat, selectate, hash_material
+
+
+if utilizator_curent() is None:
+    ecran_autentificare()
+    st.stop()
+
+# ------------------------- pagina -------------------------
+st.markdown(CSS_APP, unsafe_allow_html=True)
+
+col_titlu, col_cont = st.columns([4, 1])
+with col_titlu:
+    st.title("AI Study Buddy")
+with col_cont:
+    st.caption(utilizator_curent().email)
+    if st.button("Delogare"):
+        delogheaza()
+        st.rerun()
+
+st.caption(
+    "Transformă materialele tale în quiz-uri, teste cu cronometru, flashcarduri "
+    "și rezumate."
+)
+
+# loc rezervat pentru ghid: îl completăm după ce știm dacă există un material
+zona_intro = st.container()
+
+api_key = cheie_api()
+if not api_key:
+    st.error("Lipsește cheia API. Verifică fișierul .env sau setările Secrets.")
+    st.stop()
+
+client = genai.Client(
+    api_key=api_key,
+    http_options=types.HttpOptions(timeout=90000),  # 90 de secunde per încercare
+)
+
+limba, mat, selectate, hash_material = pasul_material()
+ctx = Context(
+    client=client,
+    limba=limba,
+    mat=mat,
+    selectate=selectate,
+    hash_material=hash_material,
+)
+are_material = mat is not None and selectate is not None
+
+sectiuni_noi, erori_sectiuni = incarca_sectiuni_noi()
+sectiuni = sorted(SECTIUNI_DE_BAZA + sectiuni_noi, key=lambda s: s["ordine"])
+
+# ghidul: deschis pentru cine intră prima oară, închis după ce există un material
+with zona_intro:
+    with st.expander("Cum funcționează?", expanded=(mat is None)):
+        st.markdown(TEXT_GHID)
+        descrise = [s for s in sectiuni_noi if s["descriere"]]
+        if descrise:
+            st.markdown(
+                "**Secțiuni adăugate**\n\n"
+                + "\n".join(f"- **{s['nume']}:** {s['descriere']}" for s in descrise)
+            )
+
+# ---------------- pasul 2: ce vrei să faci ----------------
+st.subheader("2. Alege ce vrei să faci")
+
+for eroare in erori_sectiuni:
+    st.warning(
+        f"O secțiune nouă nu s-a putut încărca ({eroare}). "
+        "Restul aplicației merge normal."
+    )
+
+taburi_ui = st.tabs([s["nume"] for s in sectiuni])
+for tab, s in zip(taburi_ui, sectiuni):
+    with tab:
+        if s["cere_material"] and not are_material:
+            st.info(
+                f"{s['descriere']}\n\n"
+                "Încarcă un document (sau lipește text) la pasul 1 ca să începi."
+            )
+        elif s.get("noua"):
+            try:
+                s["afiseaza"](ctx)
+            except Exception as e_sectiune:
+                st.error(f"Secțiunea „{s['nume']}” a dat o eroare: {e_sectiune}")
+        else:
+            s["afiseaza"](ctx)
+
+st.divider()
+st.caption(TEXT_FOOTER)
