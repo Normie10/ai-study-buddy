@@ -4,6 +4,7 @@ refresh de pagină, folosind un cookie cu token-urile de sesiune."""
 
 import datetime
 import hashlib
+import time
 
 import extra_streamlit_components as stx
 import streamlit as st
@@ -46,6 +47,9 @@ def _scrie_cookie_sesiune(access_token, refresh_token):
         expires_at=datetime.datetime.now() + datetime.timedelta(days=30),
         key="set_sesiune_cookie",
     )
+    # pauză, ca browserul să apuce efectiv să scrie cookie-ul înainte să
+    # continuăm (altfel un rerun imediat după poate „tăia” scrierea)
+    time.sleep(0.7)
 
 
 def _salveaza_sesiune(sesiune):
@@ -59,9 +63,7 @@ def _salveaza_sesiune(sesiune):
 def incearca_restaureaza_sesiune(cookies):
     """Dacă există un cookie valid (din `cookies`, citit deja de
     toate_cookiurile()) și nimeni nu e logat încă în sesiunea curentă,
-    reîncarcă sesiunea. Folosim set_session (nu refresh_session), ca să NU
-    forțăm o rotație de token la fiecare simplă vizionare a paginii —
-    Supabase reîmprospătează singur doar când chiar e nevoie."""
+    reîncarcă sesiunea."""
     if utilizator_curent() is not None:
         return
     valoare = cookies.get(NUME_COOKIE)
@@ -73,7 +75,6 @@ def incearca_restaureaza_sesiune(cookies):
         rezultat = _client().auth.set_session(access_token, refresh_token)
         if rezultat.session is not None:
             st.session_state["utilizator"] = rezultat.session.user
-            # dacă Supabase a reîmprospătat singur token-urile, le rescriem
             if (
                 rezultat.session.access_token != access_token
                 or rezultat.session.refresh_token != refresh_token
@@ -111,7 +112,11 @@ def delogheaza():
         _client().auth.sign_out()
     except Exception:
         pass
-    _cookie_manager().delete(NUME_COOKIE, key="del_sesiune_cookie")
+    try:
+        _cookie_manager().delete(NUME_COOKIE, key="del_sesiune_cookie")
+        time.sleep(0.5)
+    except Exception:
+        pass
     st.session_state.pop("utilizator", None)
     st.session_state.pop("supabase_client", None)
 
