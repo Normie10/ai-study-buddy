@@ -1,6 +1,7 @@
 """Conexiunea la Supabase: autentificare (cont, login, logout), materialele
 salvate și progresul (scorurile) pe cont. Ține minte sesiunea și după un
-refresh de pagină, folosind un cookie cu token-urile de sesiune."""
+refresh de pagină, folosind un cookie cu token-urile de sesiune. Suportă și
+un mod „vizitator”, fără cont, fără date salvate."""
 
 import datetime
 import hashlib
@@ -68,7 +69,6 @@ def incearca_restaureaza_sesiune(cookies):
         return
     valoare = cookies.get(NUME_COOKIE)
     if not valoare or "|" not in valoare:
-        st.session_state["debug_sesiune"] = "fără cookie"
         return
     access_token, refresh_token = valoare.split("|", 1)
     try:
@@ -82,11 +82,25 @@ def incearca_restaureaza_sesiune(cookies):
                 _scrie_cookie_sesiune(
                     rezultat.session.access_token, rezultat.session.refresh_token
                 )
-            st.session_state["debug_sesiune"] = "succes"
-        else:
-            st.session_state["debug_sesiune"] = "răspuns fără sesiune"
-    except Exception as e:
-        st.session_state["debug_sesiune"] = f"eroare: {e}"
+    except Exception:
+        pass
+
+
+# ------------------------- mod vizitator -------------------------
+def intra_ca_vizitator():
+    """Lasă persoana să folosească aplicația fără cont. Nimic nu se salvează
+    pe termen lung în acest mod."""
+    st.session_state["vizitator"] = True
+
+
+def este_vizitator():
+    return st.session_state.get("vizitator", False)
+
+
+def iese_din_mod_vizitator():
+    """Folosit când un vizitator vrea să-și facă cont sau să se logheze, ca
+    să se întoarcă la ecranul de autentificare."""
+    st.session_state.pop("vizitator", None)
 
 
 # ------------------------- cont și autentificare -------------------------
@@ -96,6 +110,7 @@ def inregistreaza(email, parola):
     rezultat = _client().auth.sign_up({"email": email, "password": parola})
     if rezultat.session is not None:
         _salveaza_sesiune(rezultat.session)
+        iese_din_mod_vizitator()
         return False
     return True
 
@@ -105,6 +120,7 @@ def autentifica(email, parola):
         {"email": email, "password": parola}
     )
     _salveaza_sesiune(rezultat.session)
+    iese_din_mod_vizitator()
 
 
 def delogheaza():
@@ -119,10 +135,12 @@ def delogheaza():
         pass
     st.session_state.pop("utilizator", None)
     st.session_state.pop("supabase_client", None)
+    st.session_state.pop("vizitator", None)
 
 
 def utilizator_curent():
-    """Întoarce utilizatorul autentificat, sau None."""
+    """Întoarce utilizatorul autentificat, sau None (inclusiv în modul
+    vizitator — vizitatorul nu are un cont real)."""
     return st.session_state.get("utilizator")
 
 
@@ -159,9 +177,8 @@ def sterge_material(material_id):
 
 # ------------------------- progres (scoruri) -------------------------
 def salveaza_progres(sectiune, scor, total, detalii=None):
-    """Salvează un rezultat (scor/total) pentru utilizatorul curent. Nu
-    oprește aplicația dacă eșuează — un scor nesalvat nu trebuie să strice
-    afișarea rezultatului către elev."""
+    """Salvează un rezultat (scor/total) pentru utilizatorul curent. Dacă nu
+    e cont real (vizitator), nu salvează nimic — fără eroare, fără oprire."""
     user = utilizator_curent()
     if user is None:
         return
