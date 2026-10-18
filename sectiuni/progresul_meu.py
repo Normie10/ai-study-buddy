@@ -3,11 +3,12 @@
 Istoricul scorurilor obținute la Quiz, Examen, SAT, Adevărat/Fals și
 Completează. Orice rezultat poate fi marcat cu o steluță (favorit), ca să fie
 ușor de găsit printre multe încercări. Poți filtra ce tip de rezultate vezi.
+Disponibil doar cu un cont — un vizitator vede un mesaj explicativ.
 """
 
 import streamlit as st
 
-from baza_date import progres_utilizator, seteaza_favorit
+from baza_date import este_vizitator, progres_utilizator, seteaza_favorit
 
 NUME = "Progresul meu"
 ORDINE = 99  # apare ultima, după celelalte secțiuni
@@ -51,6 +52,13 @@ def _randeaza(rand):
 
 def afiseaza(ctx):
     st.caption(DESCRIERE)
+
+    if este_vizitator():
+        st.info(
+            "Progresul se salvează doar cu un cont. Creează unul gratuit din "
+            "colțul din dreapta sus, ca să-ți vezi istoricul aici data viitoare."
+        )
+        return
 
     try:
         istoric = progres_utilizator()
