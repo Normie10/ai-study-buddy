@@ -80,18 +80,31 @@ load_dotenv()
 
 # ------------------------- link de resetare a parolei -------------------------
 # Supabase trimite link-ul de resetare cu token-urile ascunse după # (o bucată
-# din adresă pe care doar browser-ul o vede). Streamlit nu poate schimba
-# adresa din bara browser-ului (e blocat din motive de siguranță), dar POATE
-# citi ce scrie acolo — exact asta facem, fără să mișcăm nimic din adresă.
-if "sesiune_recuperare_activa" not in st.session_state:
+# din adresă pe care doar browser-ul o vede). Citim o singură dată ce scrie
+# acolo; odată detectat, ținem minte într-un steag propriu (care NU dispare
+# la rerun-uri automate) că suntem în proces de resetare, ca să nu „scăpăm”
+# din ecranul de parolă nouă înainte de vreme.
+if "in_recuperare_parola" not in st.session_state:
     url_hash = st_javascript("window.parent.location.hash")
-    if isinstance(url_hash, str) and "access_token" in url_hash and "type=recovery" in url_hash:
+    if (
+        isinstance(url_hash, str)
+        and "access_token" in url_hash
+        and "type=recovery" in url_hash
+    ):
         params = parse_qs(url_hash.lstrip("#"))
         access_token = params.get("access_token", [None])[0]
         refresh_token = params.get("refresh_token", [None])[0]
         if access_token:
-            ecran_parola_noua(access_token, refresh_token or "")
-            st.stop()
+            st.session_state["in_recuperare_parola"] = True
+            st.session_state["recuperare_access_token"] = access_token
+            st.session_state["recuperare_refresh_token"] = refresh_token or ""
+
+if st.session_state.get("in_recuperare_parola"):
+    ecran_parola_noua(
+        st.session_state.get("recuperare_access_token"),
+        st.session_state.get("recuperare_refresh_token", ""),
+    )
+    st.stop()
 
 # ------------------------- autentificare -------------------------
 # Citim cookie-urile o singură dată, devreme — managerul are nevoie de un
