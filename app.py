@@ -38,7 +38,6 @@ from google.genai import types  # noqa: E402
 
 from autentificare import ecran_autentificare  # noqa: E402
 from baza_date import (  # noqa: E402
-    NUME_COOKIE,
     delogheaza,
     incearca_restaureaza_sesiune,
     materiale_utilizator,
@@ -81,12 +80,6 @@ load_dotenv()
 # chiar la începutul paginii, înainte de orice altceva.
 cookies = toate_cookiurile()
 incearca_restaureaza_sesiune(cookies)
-
-# Mesaj temporar de depanare — îl scoatem după ce confirmăm că merge
-with st.sidebar:
-    st.caption(f"[debug] cookie găsit: {'DA' if cookies.get(NUME_COOKIE) else 'NU'}")
-    st.caption(f"[debug] logat: {'DA' if utilizator_curent() else 'NU'}")
-    st.caption(f"[debug] detaliu: {st.session_state.get('debug_sesiune', '-')}")
 
 # Secțiunile de bază. "ordine" hotărăște poziția (numerele mici apar primele).
 SECTIUNI_DE_BAZA = [
