@@ -11,7 +11,7 @@ Restul codului e împărțit în fișiere separate:
   taburi.py        secțiunile de bază (Quiz, Examen, SAT, Flashcarduri...)
   sectiuni/        secțiuni noi: fiecare fișier de aici apare singur în aplicație
   baza_date.py     conexiunea la Supabase (cont, materiale salvate, progres)
-  autentificare.py ecranul de login / cont nou / vizitator
+  autentificare.py ecranul de login / cont nou / vizitator / resetare parolă
 """
 
 import importlib
@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 # Trebuie să fie prima comandă Streamlit din script
 st.set_page_config(page_title="AI Study Buddy", layout="centered")
@@ -36,7 +37,7 @@ from dotenv import load_dotenv  # noqa: E402
 from google import genai  # noqa: E402
 from google.genai import types  # noqa: E402
 
-from autentificare import ecran_autentificare  # noqa: E402
+from autentificare import ecran_autentificare, ecran_parola_noua  # noqa: E402
 from baza_date import (  # noqa: E402
     delogheaza,
     este_vizitator,
@@ -75,6 +76,36 @@ from taburi import (  # noqa: E402
 from utile import fmt  # noqa: E402
 
 load_dotenv()
+
+# ------------------------- link de resetare a parolei -------------------------
+# Supabase trimite link-ul de resetare cu token-urile ascunse după # (o
+# bucată din adresă pe care doar browser-ul o vede, nu și serverul). Acest
+# mic script JS le mută în adresa vizibilă (după ?), ca Streamlit să le poată
+# citi.
+components.html(
+    """
+    <script>
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+        const type = params.get('type');
+        if (access_token && type === 'recovery') {
+            const newUrl = window.location.pathname + '?access_token=' +
+                encodeURIComponent(access_token) + '&refresh_token=' +
+                encodeURIComponent(refresh_token || '') + '&type=recovery';
+            window.location.replace(newUrl);
+        }
+    }
+    </script>
+    """,
+    height=0,
+)
+
+parametri = st.query_params
+if parametri.get("type") == "recovery" and parametri.get("access_token"):
+    ecran_parola_noua(parametri.get("access_token"), parametri.get("refresh_token", ""))
+    st.stop()
 
 # ------------------------- autentificare -------------------------
 # Citim cookie-urile o singură dată, devreme — managerul are nevoie de un
