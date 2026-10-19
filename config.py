@@ -266,6 +266,15 @@ button[kind="primary"]:hover {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* Butonul de profil, fixat în colțul din stânga-sus al ECRANULUI, nu al
+   coloanei centrate */
+div[class*="st-key-profil_fixat"] {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 999;
+}
+
 @media (max-width: 640px) {
     h1 { font-size: 1.7rem !important; }
     [data-testid="stMetricValue"] { font-size: 1.5rem; }
