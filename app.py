@@ -341,9 +341,7 @@ if utilizator_curent() is None and not este_vizitator():
 # ------------------------- pagina -------------------------
 st.markdown(CSS_APP, unsafe_allow_html=True)
 
-col_titlu, col_profil = st.columns([5, 1])
-with col_titlu:
-    st.title("AI Study Buddy")
+col_profil, col_titlu = st.columns([1, 5])
 with col_profil:
     if utilizator_curent() is not None:
         eticheta_profil = utilizator_curent().email.split("@")[0]
@@ -351,7 +349,9 @@ with col_profil:
         eticheta_profil = "Vizitator"
     with st.popover(eticheta_profil, use_container_width=True):
         panou_profil()
-
+with col_titlu:
+    st.title("AI Study Buddy")
+  
 st.caption(
     "Transformă materialele tale în quiz-uri, teste cu cronometru, flashcarduri "
     "și rezumate."
