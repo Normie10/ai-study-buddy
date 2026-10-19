@@ -167,7 +167,7 @@ CSS_APP = """
 }
 
 [data-testid="stMainBlockContainer"], .block-container {
-    padding-top: 1.25rem;
+    padding-top: 2.5rem;
     padding-bottom: 4rem;
     max-width: 760px;
 }
@@ -266,24 +266,28 @@ button[kind="primary"]:hover {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Butonul de profil: tras spre marginea stângă a ecranului, cu aspect de
-   "pastilă" discretă, roșu doar la hover */
+/* Butonul de profil: tras spre marginea stângă a ecranului, cu un aspect
+   curat: margine fină, iconița în roșu, accent la hover */
 div[class*="st-key-profil_fixat"] {
     width: fit-content;
     margin-left: calc((760px - 100vw) / 2 + 1rem);
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 div[class*="st-key-profil_fixat"] button {
-    border-radius: 999px !important;
     border: 1px solid var(--border) !important;
-    background-color: rgba(255, 255, 255, 0.04) !important;
-    padding: 0.4rem 1rem !important;
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-radius: 10px !important;
+    padding: 0.45rem 0.9rem !important;
     font-weight: 600;
+}
+div[class*="st-key-profil_fixat"] button span[data-testid="stIconMaterial"],
+div[class*="st-key-profil_fixat"] button svg {
+    color: var(--accent) !important;
 }
 div[class*="st-key-profil_fixat"] button:hover {
     border-color: var(--accent) !important;
     background-color: var(--accent-soft) !important;
-    color: var(--accent) !important;
+    box-shadow: 0 2px 10px rgba(229, 56, 59, 0.2);
 }
 
 @media (max-width: 640px) {
