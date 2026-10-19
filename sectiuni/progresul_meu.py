@@ -1,11 +1,13 @@
 """Secțiune: Progresul meu.
 
 Istoricul scorurilor obținute la Quiz, Examen, SAT, Adevărat/Fals și
-Completează. Orice rezultat poate fi marcat cu o steluță (favorit), ca să fie
-ușor de găsit printre multe încercări. Poți filtra ce tip de rezultate vezi.
-Disponibil doar cu un cont — un vizitator vede un mesaj explicativ.
+Completează, plus un mic rezumat statistic (total încercări, scor mediu,
+grafice). Orice rezultat poate fi marcat cu o steluță (favorit). Poți filtra
+ce tip de rezultate vezi. Disponibil doar cu un cont — un vizitator vede un
+mesaj explicativ.
 """
 
+import pandas as pd
 import streamlit as st
 
 from baza_date import este_vizitator, progres_utilizator, seteaza_favorit
@@ -15,8 +17,8 @@ ORDINE = 99  # apare ultima, după celelalte secțiuni
 CERE_MATERIAL = False
 DESCRIERE = (
     "Istoricul scorurilor tale la Quiz, Examen, SAT, Adevărat/Fals și "
-    "Completează. Poți marca rezultatele importante cu o steluță și poți "
-    "filtra după tip."
+    "Completează, cu statistici și grafice. Poți marca rezultatele importante "
+    "cu o steluță și poți filtra după tip."
 )
 
 NUME_SECTIUNE = {
@@ -50,6 +52,36 @@ def _randeaza(rand):
         st.rerun()
 
 
+def _statistici(istoric):
+    df = pd.DataFrame(istoric)
+    df["procent"] = (100 * df["scor"] / df["total"]).round(1)
+    df["nume_sectiune"] = df["sectiune"].map(lambda t: NUME_SECTIUNE.get(t, t))
+    df["data"] = pd.to_datetime(df["creat_la"])
+    df = df.sort_values("data")
+
+    total_incercari = len(df)
+    scor_mediu = round(df["procent"].mean())
+    preferata = df["nume_sectiune"].value_counts().idxmax()
+
+    st.subheader("Statistici")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total încercări", total_incercari)
+    c2.metric("Scor mediu", f"{scor_mediu}%")
+    c3.metric("Secțiunea preferată", preferata)
+
+    g1, g2 = st.columns(2)
+    with g1:
+        st.caption("Încercări pe tip")
+        pe_tip = df["nume_sectiune"].value_counts()
+        st.bar_chart(pe_tip)
+    with g2:
+        st.caption("Evoluția scorului (%) în timp")
+        serie = df.set_index("data")["procent"]
+        st.line_chart(serie)
+
+    st.divider()
+
+
 def afiseaza(ctx):
     st.caption(DESCRIERE)
 
@@ -69,6 +101,8 @@ def afiseaza(ctx):
     if not istoric:
         st.info("Nu ai niciun rezultat salvat încă. Termină un quiz sau un examen.")
         return
+
+    _statistici(istoric)
 
     tipuri_prezente = sorted(
         {r["sectiune"] for r in istoric},
