@@ -346,11 +346,11 @@ with st.container(key="profil_fixat"):
         eticheta_profil = utilizator_curent().email.split("@")[0]
     else:
         eticheta_profil = "Vizitator"
-    with st.popover(eticheta_profil):
+    with st.popover(eticheta_profil, icon=":material/account_circle:"):
         panou_profil()
 
 st.title("AI Study Buddy")
-  
+
 st.caption(
     "Transformă materialele tale în quiz-uri, teste cu cronometru, flashcarduri "
     "și rezumate."
