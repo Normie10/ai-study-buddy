@@ -142,4 +142,133 @@ TEXT_GHID = """
 - AI-ul poate greși. Verifică mereu sursa indicată.
 - Aplicația folosește o limită gratuită, comună tuturor utilizatorilor. Dacă apare
   un mesaj că modelele sunt indisponibile sau limita e atinsă, încearcă mai târziu.
-"
+"""
+
+TEXT_FOOTER = (
+    "AI Study Buddy. Conținutul e generat de AI și poate conține greșeli. "
+    "Textul din documentele tale este trimis la Google pentru generare, deci nu "
+    "încărca materiale private. Pentru a economisi cereri, serverul păstrează "
+    "temporar în memorie întrebările generate și textul extras din ultimele "
+    "documente, până la repornirea aplicației."
+)
+
+CSS_APP = """
+<style>
+:root {
+    --accent: #E5383B;
+    --accent-soft: rgba(229, 56, 59, 0.12);
+    --border: #2A2A30;
+    --muted: #9B9BA1;
+}
+
+* {
+    transition: background-color 0.15s ease, border-color 0.15s ease,
+        color 0.15s ease, transform 0.15s ease, opacity 0.2s ease;
+}
+
+[data-testid="stMainBlockContainer"], .block-container {
+    padding-top: 2.5rem;
+    padding-bottom: 4rem;
+    max-width: 760px;
+}
+
+h1 {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+h2, h3 {
+    font-weight: 700;
+}
+
+[data-testid="stCaptionContainer"] {
+    color: var(--muted);
+}
+
+/* Cardurile cu bordură (materiale salvate, secțiuni cu st.container(border=True)) */
+[data-testid="stVerticalBlockBorderWrapper"] > div {
+    border-radius: 12px;
+    border-color: var(--border) !important;
+}
+[data-testid="stVerticalBlockBorderWrapper"]:hover > div {
+    border-color: var(--accent) !important;
+}
+
+/* Tab-uri */
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+}
+[data-testid="stTabs"] button[role="tab"] {
+    font-weight: 600;
+    color: var(--muted);
+}
+[data-testid="stTabs"] button[role="tab"]:hover {
+    color: #D0D0D5;
+}
+[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    color: var(--accent);
+}
+[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+    background-color: var(--accent);
+    transition: left 0.25s ease, width 0.25s ease;
+}
+
+/* Butoane */
+button {
+    border-radius: 8px !important;
+}
+button:hover {
+    transform: translateY(-1px);
+}
+button:active {
+    transform: translateY(0);
+}
+button[kind="primary"] {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+button[kind="primary"]:hover {
+    background-color: #c92f32;
+    border-color: #c92f32;
+    box-shadow: 0 2px 10px rgba(229, 56, 59, 0.35);
+}
+
+/* Scoruri (st.metric) */
+[data-testid="stMetric"] {
+    background-color: var(--accent-soft);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+}
+[data-testid="stMetric"]:hover {
+    background-color: rgba(229, 56, 59, 0.18);
+}
+
+/* Bară de progres */
+[data-testid="stProgress"] > div > div {
+    background-color: var(--accent);
+    transition: width 0.4s ease;
+}
+
+/* Alerte (success/info/warning/error) — intrare lină */
+[data-testid="stAlert"] {
+    border-radius: 10px;
+    animation: strecura-sus 0.25s ease;
+}
+
+/* Conținut nou apărut (quiz generat, rezultate etc.) */
+[data-testid="stVerticalBlock"] > [data-testid="stElementContainer"] {
+    animation: strecura-sus 0.2s ease;
+}
+
+@keyframes strecura-sus {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+    h1 { font-size: 1.7rem !important; }
+    [data-testid="stMetricValue"] { font-size: 1.5rem; }
+}
+</style>
+"""
