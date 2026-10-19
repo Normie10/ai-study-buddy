@@ -167,7 +167,7 @@ CSS_APP = """
 }
 
 [data-testid="stMainBlockContainer"], .block-container {
-    padding-top: 2.5rem;
+    padding-top: 1.25rem;
     padding-bottom: 4rem;
     max-width: 760px;
 }
@@ -214,7 +214,7 @@ h2, h3 {
     transition: left 0.25s ease, width 0.25s ease;
 }
 
-/* Butoane */
+/* Butoane generale */
 button {
     border-radius: 8px !important;
 }
@@ -266,13 +266,24 @@ button[kind="primary"]:hover {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Butonul de profil: tras spre marginea stângă a ECRANULUI, rămânând totuși
-   în fluxul normal al paginii (nu "plutitor", nu dispare din cauza altor
-   stiluri). Pe mobil, unde oricum e aproape toată lățimea, nu mai tragem. */
+/* Butonul de profil: tras spre marginea stângă a ecranului, cu aspect de
+   "pastilă" discretă, roșu doar la hover */
 div[class*="st-key-profil_fixat"] {
     width: fit-content;
     margin-left: calc((760px - 100vw) / 2 + 1rem);
-    margin-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+div[class*="st-key-profil_fixat"] button {
+    border-radius: 999px !important;
+    border: 1px solid var(--border) !important;
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    padding: 0.4rem 1rem !important;
+    font-weight: 600;
+}
+div[class*="st-key-profil_fixat"] button:hover {
+    border-color: var(--accent) !important;
+    background-color: var(--accent-soft) !important;
+    color: var(--accent) !important;
 }
 
 @media (max-width: 640px) {
