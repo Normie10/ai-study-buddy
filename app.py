@@ -45,6 +45,7 @@ from baza_date import (  # noqa: E402
     iese_din_mod_vizitator,
     incearca_restaureaza_sesiune,
     materiale_utilizator,
+    progres_utilizator,
     salveaza_material,
     sterge_material,
     toate_cookiurile,
@@ -80,10 +81,9 @@ load_dotenv()
 
 # ------------------------- link de resetare a parolei -------------------------
 # Supabase trimite link-ul de resetare cu token-urile ascunse după # (o bucată
-# din adresă pe care doar browser-ul o vede). Citim o singură dată ce scrie
-# acolo; odată detectat, ținem minte într-un steag propriu (care NU dispare
-# la rerun-uri automate) că suntem în proces de resetare, ca să nu „scăpăm”
-# din ecranul de parolă nouă înainte de vreme.
+# din adresă pe care doar browser-ul o vede). Streamlit nu poate schimba
+# adresa din bara browser-ului, dar POATE citi ce scrie acolo — exact asta
+# facem, fără să mișcăm nimic din adresă.
 if "in_recuperare_parola" not in st.session_state:
     url_hash = st_javascript("window.parent.location.hash")
     if (
@@ -107,9 +107,6 @@ if st.session_state.get("in_recuperare_parola"):
     st.stop()
 
 # ------------------------- autentificare -------------------------
-# Citim cookie-urile o singură dată, devreme — managerul are nevoie de un
-# „rerun” automat ca să le primească efectiv din browser, de-aia facem asta
-# chiar la începutul paginii, înainte de orice altceva.
 cookies = toate_cookiurile()
 incearca_restaureaza_sesiune(cookies)
 
@@ -190,38 +187,71 @@ def incarca_material_salvat(continut):
     st.session_state["caseta_text"] = continut
 
 
-def panou_materiale_salvate():
-    """Lista materialelor salvate pe cont, cu opțiune de încărcare și ștergere.
-    Pentru un vizitator (fără cont), arată doar un mesaj explicativ."""
-    if este_vizitator():
-        st.caption(
-            "Materialele salvate sunt disponibile doar cu un cont. "
-            "Poți să-ți faci unul oricând, din butonul de sus."
-        )
-        return
-
+def _rezumat_progres():
+    """Două numere rapide: total încercări și scor mediu. Pentru popover-ul
+    de profil — statisticile complete sunt în tab-ul Progresul meu."""
     try:
-        materiale = materiale_utilizator()
-    except Exception as e_mat:
-        st.warning(f"Nu am putut încărca materialele salvate: {e_mat}")
-        return
+        istoric = progres_utilizator()
+    except Exception:
+        return None
+    if not istoric:
+        return None
+    total = len(istoric)
+    procente = [100 * r["scor"] / r["total"] for r in istoric if r["total"]]
+    medie = round(sum(procente) / len(procente)) if procente else 0
+    return total, medie
 
-    if not materiale:
-        st.caption("Nu ai niciun material salvat pe cont încă.")
-        return
 
-    for m in materiale:
-        c1, c2, c3 = st.columns([3, 1, 1])
-        c1.write(m["nume"])
-        if c2.button("Încarcă", key=f"mat_inc_{m['id']}"):
-            incarca_material_salvat(m["continut"])
+def panou_profil():
+    """Conținutul butonului de profil: cont/vizitator, progres rapid,
+    materiale salvate, delogare."""
+    if utilizator_curent() is not None:
+        st.write(f"**{utilizator_curent().email}**")
+
+        rezumat = _rezumat_progres()
+        if rezumat:
+            total, medie = rezumat
+            c1, c2 = st.columns(2)
+            c1.metric("Încercări", total)
+            c2.metric("Scor mediu", f"{medie}%")
+        else:
+            st.caption("Niciun rezultat salvat încă.")
+
+        st.divider()
+        st.markdown("**Materialele mele**")
+        try:
+            materiale = materiale_utilizator()
+        except Exception as e_mat:
+            st.warning(f"Nu am putut încărca materialele: {e_mat}")
+            materiale = []
+        if not materiale:
+            st.caption("Niciun material salvat încă.")
+        else:
+            for m in materiale:
+                c1, c2, c3 = st.columns([3, 1, 1])
+                c1.write(m["nume"])
+                if c2.button("Încarcă", key=f"mat_inc_{m['id']}"):
+                    incarca_material_salvat(m["continut"])
+                    st.rerun()
+                if c3.button("Șterge", key=f"mat_st_{m['id']}"):
+                    try:
+                        sterge_material(m["id"])
+                        st.rerun()
+                    except Exception as e_st:
+                        st.error(f"Nu am putut șterge: {e_st}")
+
+        st.divider()
+        if st.button("Delogare", key="profil_delogare", use_container_width=True):
+            delogheaza()
             st.rerun()
-        if c3.button("Șterge", key=f"mat_st_{m['id']}"):
-            try:
-                sterge_material(m["id"])
-                st.rerun()
-            except Exception as e_st:
-                st.error(f"Nu am putut șterge: {e_st}")
+
+    else:
+        st.caption(
+            "Ești vizitator — materialele și progresul nu se salvează."
+        )
+        if st.button("Creează cont", key="profil_creeaza_cont", use_container_width=True):
+            iese_din_mod_vizitator()
+            st.rerun()
 
 
 def pasul_material():
@@ -232,9 +262,6 @@ def pasul_material():
 
     with st.container(border=True):
         st.subheader("1. Alege materialul")
-
-        with st.expander("Materialele mele salvate"):
-            panou_materiale_salvate()
 
         limba = st.selectbox(
             "Limba întrebărilor și a explicațiilor",
@@ -314,26 +341,16 @@ if utilizator_curent() is None and not este_vizitator():
 # ------------------------- pagina -------------------------
 st.markdown(CSS_APP, unsafe_allow_html=True)
 
-col_titlu, col_cont = st.columns([4, 1])
+col_titlu, col_profil = st.columns([5, 1])
 with col_titlu:
     st.title("AI Study Buddy")
-with col_cont:
+with col_profil:
     if utilizator_curent() is not None:
-        st.caption(utilizator_curent().email)
-        if st.button("Delogare"):
-            delogheaza()
-            st.rerun()
+        eticheta_profil = utilizator_curent().email.split("@")[0]
     else:
-        st.caption("Vizitator")
-        if st.button("Creează cont"):
-            iese_din_mod_vizitator()
-            st.rerun()
-
-if este_vizitator():
-    st.info(
-        "Ești în modul vizitator — materialele și progresul nu se salvează. "
-        "Apasă „Creează cont” din colțul din dreapta sus, oricând vrei."
-    )
+        eticheta_profil = "Vizitator"
+    with st.popover(eticheta_profil, use_container_width=True):
+        panou_profil()
 
 st.caption(
     "Transformă materialele tale în quiz-uri, teste cu cronometru, flashcarduri "
