@@ -163,7 +163,7 @@ CSS_APP = """
 
 * {
     transition: background-color 0.15s ease, border-color 0.15s ease,
-        color 0.15s ease, transform 0.15s ease, opacity 0.2s ease;
+        color 0.15s ease, opacity 0.2s ease;
 }
 
 [data-testid="stMainBlockContainer"], .block-container {
@@ -266,18 +266,21 @@ button[kind="primary"]:hover {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Butonul de profil, fixat în colțul din stânga-sus al ECRANULUI, nu al
-   coloanei centrate */
+/* Butonul de profil: tras spre marginea stângă a ECRANULUI, rămânând totuși
+   în fluxul normal al paginii (nu "plutitor", nu dispare din cauza altor
+   stiluri). Pe mobil, unde oricum e aproape toată lățimea, nu mai tragem. */
 div[class*="st-key-profil_fixat"] {
-    position: fixed;
-    top: 1rem;
-    left: 1rem;
-    z-index: 999;
+    width: fit-content;
+    margin-left: calc((760px - 100vw) / 2 + 1rem);
+    margin-bottom: 0.5rem;
 }
 
 @media (max-width: 640px) {
     h1 { font-size: 1.7rem !important; }
     [data-testid="stMetricValue"] { font-size: 1.5rem; }
+    div[class*="st-key-profil_fixat"] {
+        margin-left: 0;
+    }
 }
 </style>
 """
