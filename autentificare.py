@@ -12,10 +12,16 @@ from baza_date import (
     seteaza_sesiune_din_recuperare,
     trimite_email_resetare,
 )
+from config import HERO_HTML
+
+
+def _antet():
+    """Antetul comun: marca roșie + numele aplicației."""
+    st.markdown(HERO_HTML, unsafe_allow_html=True)
 
 
 def ecran_autentificare():
-    st.title("AI Study Buddy")
+    _antet()
     st.caption(
         "Intră în cont sau creează unul gratuit, ca să-ți salvezi progresul "
         "și materialele."
@@ -115,7 +121,7 @@ def ecran_parola_noua(access_token, refresh_token):
     parolă nouă. Rămâne pe acest ecran până apasă explicit butonul de final,
     indiferent de rerun-urile automate declanșate pe parcurs (de exemplu la
     scrierea cookie-ului de sesiune)."""
-    st.title("AI Study Buddy")
+    _antet()
     st.subheader("Setează o parolă nouă")
 
     if not st.session_state.get("sesiune_recuperare_activa"):
