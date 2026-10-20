@@ -161,9 +161,11 @@ CSS_APP = """
     --muted: #9B9BA1;
 }
 
-* {
+/* Tranziții fine, doar pe elementele interactive (nu pe toată pagina) */
+button, [data-baseweb="tab"], [data-testid="stMetric"],
+[data-testid="stVerticalBlockBorderWrapper"] > div {
     transition: background-color 0.15s ease, border-color 0.15s ease,
-        color 0.15s ease, opacity 0.2s ease;
+        color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 [data-testid="stMainBlockContainer"], .block-container {
@@ -250,15 +252,10 @@ button[kind="primary"]:hover {
     transition: width 0.4s ease;
 }
 
-/* Alerte (success/info/warning/error) — intrare lină */
+/* Alerte (success/info/warning/error) — intrare lină, doar aici */
 [data-testid="stAlert"] {
     border-radius: 10px;
     animation: strecura-sus 0.25s ease;
-}
-
-/* Conținut nou apărut (quiz generat, rezultate etc.) */
-[data-testid="stVerticalBlock"] > [data-testid="stElementContainer"] {
-    animation: strecura-sus 0.2s ease;
 }
 
 @keyframes strecura-sus {
@@ -266,11 +263,12 @@ button[kind="primary"]:hover {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Butonul de profil: tras spre marginea stângă a ecranului, cu un aspect
-   curat: margine fină, iconița în roșu, accent la hover */
+/* Butonul de profil: tras spre marginea stângă a ecranului. Marginea nu
+   poate deveni pozitivă (max cu 0), ca să nu sară în dreapta pe ferestre
+   înguste. */
 div[class*="st-key-profil_fixat"] {
     width: fit-content;
-    margin-left: calc((760px - 100vw) / 2 + 1rem);
+    margin-left: min(0px, calc((760px - 100vw) / 2 + 1rem));
     margin-bottom: 1rem;
 }
 div[class*="st-key-profil_fixat"] button {
