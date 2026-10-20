@@ -1,7 +1,7 @@
 """AI Study Buddy: fișierul principal (aspectul paginii).
 
 Restul codului e împărțit în fișiere separate:
-  config.py        setări și texte
+  config.py        setări, texte și stilul aplicației (CSS)
   utile.py         funcții mici
   documente.py     citirea documentelor și alegerea unei părți
   generare.py      modelul AI (prompturi)
@@ -14,6 +14,7 @@ Restul codului e împărțit în fișiere separate:
   autentificare.py ecranul de login / cont nou / vizitator / resetare parolă
 """
 
+import html
 import importlib
 import os
 import sys
@@ -54,6 +55,7 @@ from baza_date import (  # noqa: E402
 from config import (  # noqa: E402
     CSS_APP,
     DESCRIERI_TAB,
+    HERO_HTML,
     MAX_CARACTERE_LIPIT,
     PLURAL,
     TEXT_FOOTER,
@@ -78,6 +80,9 @@ from taburi import (  # noqa: E402
 from utile import fmt  # noqa: E402
 
 load_dotenv()
+
+# Stilul se încarcă primul, ca să se aplice și ecranelor de login / resetare.
+st.markdown(CSS_APP, unsafe_allow_html=True)
 
 # ------------------------- link de resetare a parolei -------------------------
 # Supabase trimite link-ul de resetare cu token-urile ascunse după # (o bucată
@@ -187,6 +192,29 @@ def incarca_material_salvat(continut):
     st.session_state["caseta_text"] = continut
 
 
+# ------------------------- piese de aspect -------------------------
+def pas_titlu(numar, text):
+    """Antetul unui pas: un cerc roșu cu numărul și titlul alături."""
+    st.markdown(
+        f'<div class="pas"><span class="pas-nr">{numar}</span>'
+        f'<span class="pas-titlu">{html.escape(text)}</span></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def stare_goala(descriere):
+    """Ce se vede într-o secțiune când nu e ales încă niciun material."""
+    st.markdown(
+        '<div class="gol">'
+        '<div class="gol-titlu">Alege mai întâi un material</div>'
+        f'<div class="gol-text">{html.escape(descriere)}</div>'
+        '<div class="gol-indiciu">Pasul 1, mai sus: încarcă un fișier sau '
+        "lipește text</div>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
 def _rezumat_progres():
     """Două numere rapide: total încercări și scor mediu. Pentru popover-ul
     de profil — statisticile complete sunt în tab-ul Progresul meu."""
@@ -261,20 +289,23 @@ def pasul_material():
     hash_material = None
 
     with st.container(border=True):
-        st.subheader("1. Alege materialul")
+        pas_titlu(1, "Alege materialul")
 
-        limba = st.selectbox(
-            "Limba întrebărilor și a explicațiilor",
-            ["română", "engleză"],
-            help="La SAT, întrebările rămân în engleză; explicațiile urmează această limbă.",
-        )
-
-        sursa = st.radio(
-            "De unde iei materialul? (nu e nevoie pentru SAT)",
-            ["Încarcă un fișier", "Lipește text"],
-            horizontal=True,
-            key="sursa_material",
-        )
+        c_limba, c_sursa = st.columns([1, 1.4])
+        with c_limba:
+            limba = st.selectbox(
+                "Limba întrebărilor și a explicațiilor",
+                ["română", "engleză"],
+                help="La SAT, întrebările rămân în engleză; explicațiile urmează această limbă.",
+            )
+        with c_sursa:
+            sursa = st.radio(
+                "Sursa materialului",
+                ["Încarcă un fișier", "Lipește text"],
+                horizontal=True,
+                key="sursa_material",
+                help="Pentru SAT nu ai nevoie de material.",
+            )
 
         if sursa == "Încarcă un fișier":
             fisier = st.file_uploader(
@@ -339,8 +370,6 @@ if utilizator_curent() is None and not este_vizitator():
     st.stop()
 
 # ------------------------- pagina -------------------------
-st.markdown(CSS_APP, unsafe_allow_html=True)
-
 with st.container(key="profil_fixat"):
     if utilizator_curent() is not None:
         eticheta_profil = utilizator_curent().email.split("@")[0]
@@ -349,14 +378,9 @@ with st.container(key="profil_fixat"):
     with st.popover(eticheta_profil, icon=":material/account_circle:"):
         panou_profil()
 
-st.title("AI Study Buddy")
+st.markdown(HERO_HTML, unsafe_allow_html=True)
 
-st.caption(
-    "Transformă materialele tale în quiz-uri, teste cu cronometru, flashcarduri "
-    "și rezumate."
-)
-
-# loc rezervat pentru ghid: îl completăm după ce știm dacă există un material
+# loc rezervat pentru ghid: îl completăm după ce știm ce secțiuni există
 zona_intro = st.container()
 
 api_key = cheie_api()
@@ -382,9 +406,9 @@ are_material = mat is not None and selectate is not None
 sectiuni_noi, erori_sectiuni = incarca_sectiuni_noi()
 sectiuni = sorted(SECTIUNI_DE_BAZA + sectiuni_noi, key=lambda s: s["ordine"])
 
-# ghidul: deschis pentru cine intră prima oară, închis după ce există un material
+# ghidul: închis implicit (pagina rămâne curată); se deschide cu un click
 with zona_intro:
-    with st.expander("Cum funcționează?", expanded=(mat is None)):
+    with st.expander("Cum funcționează?", expanded=False):
         st.markdown(TEXT_GHID)
         descrise = [s for s in sectiuni_noi if s["descriere"]]
         if descrise:
@@ -394,7 +418,7 @@ with zona_intro:
             )
 
 # ---------------- pasul 2: ce vrei să faci ----------------
-st.subheader("2. Alege ce vrei să faci")
+pas_titlu(2, "Alege ce vrei să faci")
 
 for eroare in erori_sectiuni:
     st.warning(
@@ -406,10 +430,7 @@ taburi_ui = st.tabs([s["nume"] for s in sectiuni])
 for tab, s in zip(taburi_ui, sectiuni):
     with tab:
         if s["cere_material"] and not are_material:
-            st.info(
-                f"{s['descriere']}\n\n"
-                "Încarcă un document (sau lipește text) la pasul 1 ca să începi."
-            )
+            stare_goala(s["descriere"])
         elif s.get("noua"):
             try:
                 s["afiseaza"](ctx)
@@ -418,5 +439,7 @@ for tab, s in zip(taburi_ui, sectiuni):
         else:
             s["afiseaza"](ctx)
 
-st.divider()
-st.caption(TEXT_FOOTER)
+st.markdown(
+    f'<div class="subsol">{html.escape(TEXT_FOOTER)}</div>',
+    unsafe_allow_html=True,
+)
