@@ -61,6 +61,7 @@ def curata_rezultate():
     """Șterge rezultatele afișate (quiz, carduri, rezumat) când se schimbă materialul."""
     for k in (
         "quiz",
+        "quiz_predat",
         "info_quiz",
         "carduri",
         "info_carduri",
@@ -142,6 +143,7 @@ def tab_quiz(ctx):
                     if k.startswith("q") and k[1:].isdigit():
                         del st.session_state[k]
                 st.session_state["quiz"] = quiz
+                st.session_state.pop("quiz_predat", None)  # quiz nou, nepredat
                 st.session_state["info_quiz"] = f"{model_folosit} · {nota}"
             except Exception as e_quiz:
                 st.error(f"A apărut o eroare: {e_quiz}")
@@ -158,6 +160,8 @@ def tab_quiz(ctx):
             on_click="ignore",
             key="dl_quiz",
         )
+
+        predat = st.session_state.get("quiz_predat")
         raspunsuri = {}
         for i, q in enumerate(quiz):
             raspunsuri[i] = st.radio(
@@ -165,14 +169,28 @@ def tab_quiz(ctx):
                 q["variante"],
                 index=None,
                 key=f"q{i}",
+                disabled=predat is not None,  # după predare, răspunsurile se blochează
             )
 
-        if st.button("Verifică răspunsurile"):
-            scor = 0
+        if predat is None:
+            if st.button("Predă răspunsurile", key="quiz_preda"):
+                scor = sum(
+                    1
+                    for i, q in enumerate(quiz)
+                    if raspunsuri[i] == q["variante"][q["corect"]]
+                )
+                # se salvează o singură dată: prima predare e cea finală
+                salveaza_progres("quiz", scor, len(quiz))
+                st.session_state["quiz_predat"] = {
+                    "raspunsuri": dict(raspunsuri),
+                    "scor": scor,
+                }
+                st.rerun()  # redesenează cu răspunsurile blocate
+        else:
+            scor = predat["scor"]
             for i, q in enumerate(quiz):
                 corect = q["variante"][q["corect"]]
-                if raspunsuri[i] == corect:
-                    scor += 1
+                if predat["raspunsuri"].get(i) == corect:
                     st.success(f"{i + 1}. Corect!")
                 else:
                     st.error(f"{i + 1}. Greșit. Răspuns corect: {corect}")
@@ -180,7 +198,10 @@ def tab_quiz(ctx):
                     f"{q['explicatie']} ({q.get('unitate', 'pagina')} {q['pagina']})"
                 )
             st.subheader(f"Scor: {scor}/{len(quiz)}")
-            salveaza_progres("quiz", scor, len(quiz))
+            st.caption(
+                "Răspunsurile au fost predate. Pentru o nouă încercare, "
+                "generează un quiz nou."
+            )
 
 
 # ---------------- EXAMEN (din document) ----------------
