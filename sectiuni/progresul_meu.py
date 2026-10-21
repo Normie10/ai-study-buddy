@@ -29,6 +29,8 @@ NUME_SECTIUNE = {
     "comp": "Completează",
 }
 
+CULOARE_GRAFIC = "#E5383B"  # același roșu ca în restul aplicației
+
 
 def _comuta_favorit(rand_id, favorit_nou):
     try:
@@ -73,11 +75,11 @@ def _statistici(istoric):
     with g1:
         st.caption("Încercări pe tip")
         pe_tip = df["nume_sectiune"].value_counts()
-        st.bar_chart(pe_tip)
+        st.bar_chart(pe_tip, color=CULOARE_GRAFIC)
     with g2:
         st.caption("Evoluția scorului (%) în timp")
         serie = df.set_index("data")["procent"]
-        st.line_chart(serie)
+        st.line_chart(serie, color=CULOARE_GRAFIC)
 
     st.divider()
 
