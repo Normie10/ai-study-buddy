@@ -332,7 +332,7 @@ def pasul_material():
             text_curent = st.session_state.get("text_lipit", "")
             if text_curent.strip():
                 mat = material_din_text(text_curent)
-                b1, b2 = st.columns(2)
+                b1, b2, _liber = st.columns([1, 1.7, 2.3])
                 b1.button("Șterge textul", on_click=sterge_textul)
                 if not este_vizitator():
                     if b2.button("Salvează acest material pe cont"):
