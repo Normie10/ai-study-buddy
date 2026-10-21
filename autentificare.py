@@ -22,14 +22,15 @@ def _antet():
 
 def ecran_autentificare():
     _antet()
-    st.caption(
-        "Intră în cont sau creează unul gratuit, ca să-ți salvezi progresul "
-        "și materialele."
-    )
 
     if st.session_state.get("arata_resetare"):
         _formular_cerere_resetare()
         return
+
+    st.caption(
+        "Intră în cont sau creează unul gratuit, ca să-ți salvezi progresul "
+        "și materialele."
+    )
 
     tab_login, tab_inregistrare = st.tabs(["Intră în cont", "Cont nou"])
 
