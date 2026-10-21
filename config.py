@@ -206,8 +206,12 @@ h2, h3 {
     font-weight: 700;
     letter-spacing: -0.015em;
 }
-[data-testid="stCaptionContainer"] {
-    color: var(--muted);
+/* Textele mici (descrieri, explicații): lizibile, nu stinse. Culoarea se pune
+   și pe elementele dinăuntru, fiindcă Streamlit le dă o transparență proprie. */
+[data-testid="stCaptionContainer"],
+[data-testid="stCaptionContainer"] * {
+    color: var(--muted) !important;
+    opacity: 1 !important;
 }
 hr {
     border-color: var(--border) !important;
