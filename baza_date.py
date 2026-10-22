@@ -136,6 +136,7 @@ def delogheaza():
     st.session_state.pop("utilizator", None)
     st.session_state.pop("supabase_client", None)
     st.session_state.pop("vizitator", None)
+    st.session_state.pop("eroare_salvare", None)
 
 
 def utilizator_curent():
@@ -201,7 +202,9 @@ def sterge_material(material_id):
 # ------------------------- progres (scoruri) -------------------------
 def salveaza_progres(sectiune, scor, total, detalii=None):
     """Salvează un rezultat (scor/total) pentru utilizatorul curent. Dacă nu
-    e cont real (vizitator), nu salvează nimic — fără eroare, fără oprire."""
+    e cont real (vizitator), nu salvează nimic — fără eroare, fără oprire.
+    Dacă salvarea eșuează, nu oprește aplicația: notează eroarea în sesiune,
+    iar app.py arată un mesaj galben."""
     user = utilizator_curent()
     if user is None:
         return
@@ -215,8 +218,9 @@ def salveaza_progres(sectiune, scor, total, detalii=None):
                 "detalii": detalii or {},
             }
         ).execute()
-    except Exception:
-        pass
+    except Exception as e_salvare:
+        motiv = str(e_salvare).strip()[:200] or type(e_salvare).__name__
+        st.session_state["eroare_salvare"] = motiv
 
 
 def progres_utilizator(limita=50):
