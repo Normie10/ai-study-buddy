@@ -48,6 +48,25 @@ def examen_nou(nume):
     st.session_state.pop(nume, None)
 
 
+def reface_cu_greseli(nume, ex, gresite):
+    """Pornește un test nou, doar cu întrebările greșite la ultima predare.
+    Timpul alocat e proporțional cu numărul de întrebări greșite."""
+    sterge_chei_examen(nume)
+    total_initial = len(ex["intrebari"])
+    durata_noua = max(60, round(ex["durata"] * len(gresite) / total_initial))
+    st.session_state[nume] = {
+        "sursa": ex.get("sursa"),
+        "titlu": f"Recapitulare greșeli - {ex.get('titlu', 'Rezultate')}",
+        "intrebari": list(gresite),
+        "cerute": len(gresite),
+        "durata": durata_noua,
+        "info": "Recapitulare greșeli",
+        "context": ex["context"],
+        "stare": "in_curs",
+        "start": time.time(),
+    }
+
+
 @st.fragment(run_every=1)
 def cronometru(nume):
     """Se reîncarcă singur în fiecare secundă; la 0 predă testul."""
@@ -123,6 +142,16 @@ def afiseaza_rezultat(ex, nume):
         st.caption(
             "Întrebările sunt scrise de AI și pot conține greșeli. Scorul nu este "
             "scorul oficial SAT."
+        )
+
+    gresite_intrebari = [q for _, q, _, ok in detalii if not ok]
+    if gresite_intrebari:
+        st.button(
+            f"Recapitulează doar greșelile ({len(gresite_intrebari)})",
+            on_click=reface_cu_greseli,
+            args=(nume, ex, gresite_intrebari),
+            key=f"recap_{nume}",
+            type="primary",
         )
 
     with st.expander("Vezi toate întrebările și răspunsurile"):
