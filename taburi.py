@@ -125,6 +125,16 @@ def alege_intrebari(ctx, tip, nr, dif, pentru_examen=False):
     return elemente, model, nota
 
 
+def reface_quiz_doar_greseli(gresite):
+    """Pornește un quiz nou, doar cu întrebările greșite la ultima predare."""
+    for k in list(st.session_state.keys()):
+        if k.startswith("q") and k[1:].isdigit():
+            del st.session_state[k]
+    st.session_state["quiz"] = list(gresite)
+    st.session_state.pop("quiz_predat", None)
+    st.session_state["info_quiz"] = "Recapitulare greșeli"
+
+
 # ---------------- QUIZ ----------------
 def tab_quiz(ctx):
     st.caption(DESCRIERI_TAB["quiz"])
@@ -188,16 +198,27 @@ def tab_quiz(ctx):
                 st.rerun()  # redesenează cu răspunsurile blocate
         else:
             scor = predat["scor"]
+            gresite = []
             for i, q in enumerate(quiz):
                 corect = q["variante"][q["corect"]]
-                if predat["raspunsuri"].get(i) == corect:
+                ales = predat["raspunsuri"].get(i)
+                if ales == corect:
                     st.success(f"{i + 1}. Corect!")
                 else:
                     st.error(f"{i + 1}. Greșit. Răspuns corect: {corect}")
+                    gresite.append(q)
                 st.caption(
                     f"{q['explicatie']} ({q.get('unitate', 'pagina')} {q['pagina']})"
                 )
             st.subheader(f"Scor: {scor}/{len(quiz)}")
+            if gresite:
+                st.button(
+                    f"Recapitulează doar greșelile ({len(gresite)})",
+                    on_click=reface_quiz_doar_greseli,
+                    args=(gresite,),
+                    key="quiz_recap_greseli",
+                    type="primary",
+                )
             st.caption(
                 "Răspunsurile au fost predate. Pentru o nouă încercare, "
                 "generează un quiz nou."
