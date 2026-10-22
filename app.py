@@ -184,6 +184,11 @@ def sterge_textul():
     st.session_state["caseta_text"] = ""
 
 
+def inchide_avertisment_salvare():
+    """Ascunde mesajul galben despre scorul care nu s-a putut salva."""
+    st.session_state.pop("eroare_salvare", None)
+
+
 def incarca_material_salvat(continut):
     """Pune conținutul unui material salvat în caseta de text, ca să fie
     folosit ca și cum tocmai l-ai lipit."""
@@ -380,6 +385,10 @@ with st.container(key="profil_fixat"):
 
 st.markdown(HERO_HTML, unsafe_allow_html=True)
 
+# loc rezervat pentru avertismentul de salvare: îl completăm la finalul paginii,
+# după ce toate secțiunile au rulat (o salvare poate eșua oriunde în pagină)
+zona_avertisment = st.container()
+
 # loc rezervat pentru ghid: îl completăm după ce știm ce secțiuni există
 zona_intro = st.container()
 
@@ -438,6 +447,22 @@ for tab, s in zip(taburi_ui, sectiuni):
                 st.error(f"Secțiunea „{s['nume']}” a dat o eroare: {e_sectiune}")
         else:
             s["afiseaza"](ctx)
+
+# avertisment: dacă un scor nu s-a putut salva pe cont, se vede sus, sub antet
+motiv_salvare = st.session_state.get("eroare_salvare")
+if motiv_salvare:
+    with zona_avertisment:
+        st.warning(
+            "Scorul nu s-a putut salva pe cont, deci nu va apărea la "
+            "„Progresul meu”. Rezultatul afișat este corect. Dacă mesajul se "
+            "repetă, delogheaz-te și intră din nou în cont."
+        )
+        st.caption(f"Detalii tehnice: {motiv_salvare}")
+        st.button(
+            "Am înțeles",
+            on_click=inchide_avertisment_salvare,
+            key="inchide_avert_salvare",
+        )
 
 st.markdown(
     f'<div class="subsol">{html.escape(TEXT_FOOTER)}</div>',
