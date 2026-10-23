@@ -78,7 +78,7 @@ from taburi import (  # noqa: E402
     tab_sat,
 )
 from utile import fmt  # noqa: E402
-   from stil_notificari import CSS_NOTIFICARI  # noqa: E402
+from stil_notificari import CSS_NOTIFICARI  # noqa: E402
 
 load_dotenv()
 
