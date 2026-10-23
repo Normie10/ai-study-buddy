@@ -420,6 +420,21 @@ are_material = mat is not None and selectate is not None
 sectiuni_noi, erori_sectiuni = incarca_sectiuni_noi()
 sectiuni = sorted(SECTIUNI_DE_BAZA + sectiuni_noi, key=lambda s: s["ordine"])
 
+# obiectivul zilnic stă în secțiunea „Progresul meu”: îi punem un loc rezervat
+# la început, pe care îl completăm la finalul paginii
+def _cu_loc_pentru_obiectiv(functie):
+    def invelita(ctx):
+        zone_obiectiv.append(st.container())
+        functie(ctx)
+
+    return invelita
+
+
+for s in sectiuni_noi:
+    if "progres" in s["nume"].lower():
+        s["afiseaza"] = _cu_loc_pentru_obiectiv(s["afiseaza"])
+        break
+
 # ghidul: închis implicit (pagina rămâne curată); se deschide cu un click
 with zona_intro:
     with st.expander("Cum funcționează?", expanded=False):
@@ -455,8 +470,8 @@ for tab, s in zip(taburi_ui, sectiuni):
           
 # obiectivul zilnic: se desenează abia acum, ca să includă și ce s-a terminat
 # chiar în această rulare (un quiz predat, un test încheiat)
-with zona_obiectiv:
-    afiseaza_obiectiv()
+for zona_ob in zone_obiectiv:
+    afiseaza_obiectiv(zona_ob)
 # avertisment: dacă un scor nu s-a putut salva pe cont, se vede sus, sub antet
 motiv_salvare = st.session_state.get("eroare_salvare")
 if motiv_salvare:
