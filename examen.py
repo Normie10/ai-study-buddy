@@ -7,6 +7,7 @@ import streamlit as st
 
 from baza_date import salveaza_progres
 from export_html import html_examen
+from explicatii import arata_corect_si_motiv
 from utile import eticheta_grup, formateaza_timp, md, sursa_text, text_intrebare
 
 
@@ -164,7 +165,7 @@ def afiseaza_rezultat(ex, nume):
                 f"{stare}. Răspunsul tău: {md(ales, q) if ales else 'fără răspuns'}"
             )
             if not ok:
-                st.markdown(f"Răspuns corect: {md(q['variante'][q['corect']], q)}")
+               arata_corect_si_motiv(q, ales)
             st.caption(f"{md(q['explicatie'], q)} ({sursa_text(q)})")
             st.divider()
 
