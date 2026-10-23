@@ -80,6 +80,7 @@ from taburi import (  # noqa: E402
 from utile import fmt  # noqa: E402
 from stil_notificari import CSS_NOTIFICARI  # noqa: E402
 from obiectiv_zilnic import afiseaza_obiectiv  # noqa: E402
+from abonamente import antet_profil, butoane_vizitator  # noqa: E402
 
 load_dotenv()
 
@@ -242,7 +243,7 @@ def panou_profil():
     """Conținutul butonului de profil: cont/vizitator, progres rapid,
     materiale salvate, delogare."""
     if utilizator_curent() is not None:
-        st.write(f"**{utilizator_curent().email}**")
+        antet_profil(utilizator_curent().email)
 
         rezumat = _rezumat_progres()
         if rezumat:
@@ -285,7 +286,7 @@ def panou_profil():
         st.caption(
             "Ești vizitator — materialele și progresul nu se salvează."
         )
-        if st.button("Creează cont", key="profil_creeaza_cont", use_container_width=True):
+        if butoane_vizitator():
             iese_din_mod_vizitator()
             st.rerun()
 
