@@ -241,3 +241,64 @@ def seteaza_favorit(progres_id, favorit):
     _client().table("progres").update({"este_favorit": favorit}).eq(
         "id", progres_id
     ).execute()
+
+# ------------------------- obiectiv zilnic și serie -------------------------
+OBIECTIV_IMPLICIT = 2  # activități pe zi, dacă utilizatorul n-a ales altceva
+
+
+def _tabel_progres_nou():
+    """Folosită la salvarea unui rezultat: marchează ca vechi rezumatul
+    obiectivului zilnic (se recalculează la următoarea afișare) și întoarce
+    tabelul de progres."""
+    st.session_state.pop("cache_obiectiv", None)
+    return _client().table("progres")
+
+
+def date_progres(limita=1000):
+    """Datele (ca text) la care s-au salvat rezultate, cele mai noi primele."""
+    user = utilizator_curent()
+    if user is None:
+        return []
+    rezultat = (
+        _client()
+        .table("progres")
+        .select("creat_la")
+        .eq("user_id", user.id)
+        .order("creat_la", desc=True)
+        .limit(limita)
+        .execute()
+    )
+    return [r["creat_la"] for r in rezultat.data]
+
+
+def obiectiv_zilnic():
+    """Câte activități pe zi și-a propus utilizatorul (păstrat în datele
+    contului Supabase)."""
+    user = utilizator_curent()
+    if user is None:
+        return OBIECTIV_IMPLICIT
+    din_sesiune = st.session_state.get("obiectiv_zilnic_sesiune")
+    if din_sesiune and din_sesiune[0] == user.id:
+        return din_sesiune[1]
+    meta = getattr(user, "user_metadata", None) or {}
+    try:
+        return max(1, min(10, int(meta.get("obiectiv_zilnic", OBIECTIV_IMPLICIT))))
+    except (TypeError, ValueError):
+        return OBIECTIV_IMPLICIT
+
+
+def seteaza_obiectiv(n):
+    """Salvează obiectivul pe cont. Întoarce True dacă s-a salvat pe cont,
+    False dacă a rămas doar în sesiunea curentă."""
+    user = utilizator_curent()
+    if user is None:
+        return False
+    n = max(1, min(10, int(n)))
+    st.session_state["obiectiv_zilnic_sesiune"] = (user.id, n)
+    try:
+        rezultat = _client().auth.update_user({"data": {"obiectiv_zilnic": n}})
+        if rezultat is not None and rezultat.user is not None:
+            st.session_state["utilizator"] = rezultat.user
+        return True
+    except Exception:
+        return False
