@@ -78,11 +78,13 @@ from taburi import (  # noqa: E402
     tab_sat,
 )
 from utile import fmt  # noqa: E402
+   from stil_notificari import CSS_NOTIFICARI  # noqa: E402
 
 load_dotenv()
 
 # Stilul se încarcă primul, ca să se aplice și ecranelor de login / resetare.
 st.markdown(CSS_APP, unsafe_allow_html=True)
+   st.markdown(CSS_NOTIFICARI, unsafe_allow_html=True)
 
 # ------------------------- link de resetare a parolei -------------------------
 # Supabase trimite link-ul de resetare cu token-urile ascunse după # (o bucată
@@ -387,7 +389,7 @@ st.markdown(HERO_HTML, unsafe_allow_html=True)
 
 # loc rezervat pentru avertismentul de salvare: îl completăm la finalul paginii,
 # după ce toate secțiunile au rulat (o salvare poate eșua oriunde în pagină)
-zona_avertisment = st.container()
+   zona_avertisment = st.container(key="avert_salvare")
 
 # loc rezervat pentru ghid: îl completăm după ce știm ce secțiuni există
 zona_intro = st.container()
