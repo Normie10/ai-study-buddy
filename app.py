@@ -388,7 +388,7 @@ with st.container(key="profil_fixat"):
 
 st.markdown(HERO_HTML, unsafe_allow_html=True)
 
-zona_obiectiv = st.container()
+zone_obiectiv = []
 
 # loc rezervat pentru avertismentul de salvare: îl completăm la finalul paginii,
 # după ce toate secțiunile au rulat (o salvare poate eșua oriunde în pagină)
