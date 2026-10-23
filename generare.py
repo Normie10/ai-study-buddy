@@ -43,6 +43,17 @@ def cere_model(client, prompt, prelucrare):
     )
 
 
+def _de_ce_gresit(q, corect):
+    """Citește explicațiile pentru variantele greșite. Dacă modelul nu le-a dat
+    sau a greșit formatul, întoarce None (întrebarea rămâne bună)."""
+    lista = q.get("de_ce_gresit")
+    if not isinstance(lista, list) or len(lista) != 4:
+        return None
+    texte = [str(t).strip() for t in lista]
+    texte[corect] = ""
+    return texte
+
+
 def valideaza_quiz(lista, unitate):
     bune = []
     for q in lista:
@@ -54,7 +65,7 @@ def valideaza_quiz(lista, unitate):
                         {
                             "intrebare": str(q["intrebare"]),
                             "variante": [str(v) for v in q["variante"]],
-                            "corect": corect,
+                            "corect": corect, "de_ce_gresit": _de_ce_gresit(q, corect),
                             "pagina": q.get("pagina", "?"),
                             "unitate": unitate,
                             "explicatie": str(q.get("explicatie", "")),
@@ -137,10 +148,13 @@ Reguli:
 - Fiecare întrebare tratează un alt aspect; nu repeta întrebări și nu reformula
   aceeași întrebare.
 - Fiecare întrebare are exact 4 variante, dintre care una singură corectă.
+- În "de_ce_gresit" pune o listă cu exact 4 texte, în aceeași ordine ca variantele:
+  pentru varianta corectă pune "" (text gol), iar pentru fiecare variantă greșită
+  explică într-o singură propoziție scurtă (maximum 20 de cuvinte) de ce e greșită.
 - În câmpul "pagina" pune numărul din eticheta [{eticheta.capitalize()} N] a
   fragmentului de unde provine răspunsul.
 - Răspunde DOAR cu JSON valid, fără alt text, în formatul:
-[{{"intrebare": "...", "variante": ["A", "B", "C", "D"], "corect": 0, "pagina": 1, "explicatie": "..."}}]
+[{{"intrebare": "...", "variante": ["A", "B", "C", "D"], "corect": 0, "pagina": 1, "explicatie": "...", "de_ce_gresit": ["", "...", "...", "..."]}}]: ["A", "B", "C", "D"], "corect": 0, "pagina": 1, "explicatie": "..."}}]
 ("corect" este indexul variantei corecte, de la 0 la 3)
 
 TEXT:
