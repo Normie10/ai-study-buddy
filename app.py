@@ -389,7 +389,7 @@ st.markdown(HERO_HTML, unsafe_allow_html=True)
 
 # loc rezervat pentru avertismentul de salvare: îl completăm la finalul paginii,
 # după ce toate secțiunile au rulat (o salvare poate eșua oriunde în pagină)
-   zona_avertisment = st.container(key="avert_salvare")
+zona_avertisment = st.container(key="avert_salvare")
 
 # loc rezervat pentru ghid: îl completăm după ce știm ce secțiuni există
 zona_intro = st.container()
