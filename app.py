@@ -84,7 +84,7 @@ load_dotenv()
 
 # Stilul se încarcă primul, ca să se aplice și ecranelor de login / resetare.
 st.markdown(CSS_APP, unsafe_allow_html=True)
-   st.markdown(CSS_NOTIFICARI, unsafe_allow_html=True)
+st.markdown(CSS_NOTIFICARI, unsafe_allow_html=True)
 
 # ------------------------- link de resetare a parolei -------------------------
 # Supabase trimite link-ul de resetare cu token-urile ascunse după # (o bucată
