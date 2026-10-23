@@ -79,6 +79,7 @@ from taburi import (  # noqa: E402
 )
 from utile import fmt  # noqa: E402
 from stil_notificari import CSS_NOTIFICARI  # noqa: E402
+from obiectiv_zilnic import afiseaza_obiectiv  # noqa: E402
 
 load_dotenv()
 
@@ -387,6 +388,8 @@ with st.container(key="profil_fixat"):
 
 st.markdown(HERO_HTML, unsafe_allow_html=True)
 
+zona_obiectiv = st.container()
+
 # loc rezervat pentru avertismentul de salvare: îl completăm la finalul paginii,
 # după ce toate secțiunile au rulat (o salvare poate eșua oriunde în pagină)
 zona_avertisment = st.container(key="avert_salvare")
@@ -449,7 +452,11 @@ for tab, s in zip(taburi_ui, sectiuni):
                 st.error(f"Secțiunea „{s['nume']}” a dat o eroare: {e_sectiune}")
         else:
             s["afiseaza"](ctx)
-
+          
+# obiectivul zilnic: se desenează abia acum, ca să includă și ce s-a terminat
+# chiar în această rulare (un quiz predat, un test încheiat)
+with zona_obiectiv:
+    afiseaza_obiectiv()
 # avertisment: dacă un scor nu s-a putut salva pe cont, se vede sus, sub antet
 motiv_salvare = st.session_state.get("eroare_salvare")
 if motiv_salvare:
