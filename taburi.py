@@ -24,6 +24,7 @@ from config import (
 from documente import alege_fragmente, descrie_surse
 from examen import afiseaza_examen
 from export_html import html_carduri, html_quiz
+from explicatii import arata_greseala_quiz
 from generare import (
     genereaza_rezumat,
     genereaza_teanc_af,
@@ -205,7 +206,7 @@ def tab_quiz(ctx):
                 if ales == corect:
                     st.success(f"{i + 1}. Corect!")
                 else:
-                    st.error(f"{i + 1}. Greșit. Răspuns corect: {corect}")
+                    arata_greseala_quiz(i, q, corect, ales)
                     gresite.append(q)
                 st.caption(
                     f"{q['explicatie']} ({q.get('unitate', 'pagina')} {q['pagina']})"
