@@ -209,7 +209,7 @@ def salveaza_progres(sectiune, scor, total, detalii=None):
     if user is None:
         return
     try:
-        _client().table("progres").insert(
+        _tabel_progres_nou().insert(
             {
                 "user_id": user.id,
                 "sectiune": sectiune,
