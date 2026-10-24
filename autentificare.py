@@ -12,12 +12,19 @@ from baza_date import (
     seteaza_sesiune_din_recuperare,
     trimite_email_resetare,
 )
-from config import HERO_HTML
+from limbi import t
 
 
 def _antet():
-    """Antetul comun: marca roșie + numele aplicației."""
-    st.markdown(HERO_HTML, unsafe_allow_html=True)
+    """Antetul comun: marca roșie + numele aplicației. HTML-ul rămâne pe UN
+    SINGUR rând, fără linii goale, altfel Markdown îl strică."""
+    html_antet = (
+        '<div class="hero"><div class="hero-marca"></div><div>'
+        '<div class="hero-titlu">AI Study Buddy</div>'
+        '<div class="hero-sub">' + t("auth_hero_sub") + "</div>"
+        "</div></div>"
+    )
+    st.markdown(html_antet, unsafe_allow_html=True)
 
 
 def ecran_autentificare():
@@ -27,92 +34,84 @@ def ecran_autentificare():
         _formular_cerere_resetare()
         return
 
-    st.caption(
-        "Intră în cont sau creează unul gratuit, ca să-ți salvezi progresul "
-        "și materialele."
-    )
+    st.caption(t("auth_intro"))
 
-    tab_login, tab_inregistrare = st.tabs(["Intră în cont", "Cont nou"])
+    tab_login, tab_inregistrare = st.tabs(
+        [t("auth_tab_login"), t("auth_tab_cont_nou")]
+    )
 
     with tab_login:
         with st.form("form_login"):
-            email = st.text_input("Email", key="login_email")
-            parola = st.text_input("Parolă", type="password", key="login_parola")
-            trimis = st.form_submit_button("Intră în cont", type="primary")
+            email = st.text_input(t("auth_email"), key="login_email")
+            parola = st.text_input(
+                t("auth_parola"), type="password", key="login_parola"
+            )
+            trimis = st.form_submit_button(t("auth_tab_login"), type="primary")
         if trimis:
             if not email or not parola:
-                st.error("Completează email și parolă.")
+                st.error(t("auth_completeaza_login"))
             else:
                 try:
                     autentifica(email, parola)
                     st.rerun()
                 except Exception:
-                    st.error("Email sau parolă greșite.")
+                    st.error(t("auth_login_gresit"))
 
-        if st.button("Ai uitat parola?", key="link_resetare"):
+        if st.button(t("auth_uitat"), key="link_resetare"):
             st.session_state["arata_resetare"] = True
             st.rerun()
 
     with tab_inregistrare:
         with st.form("form_inregistrare"):
-            email_n = st.text_input("Email", key="reg_email")
+            email_n = st.text_input(t("auth_email"), key="reg_email")
             parola_n = st.text_input(
-                "Parolă (minimum 6 caractere)", type="password", key="reg_parola"
+                t("auth_parola_min"), type="password", key="reg_parola"
             )
             parola_n2 = st.text_input(
-                "Confirmă parola", type="password", key="reg_parola2"
+                t("auth_confirma"), type="password", key="reg_parola2"
             )
-            trimis_n = st.form_submit_button("Creează cont", type="primary")
+            trimis_n = st.form_submit_button(t("auth_creeaza"), type="primary")
         if trimis_n:
             if not email_n or not parola_n:
-                st.error("Completează toate câmpurile.")
+                st.error(t("auth_completeaza_toate"))
             elif parola_n != parola_n2:
-                st.error("Parolele nu coincid.")
+                st.error(t("auth_parole_diferite"))
             elif len(parola_n) < 6:
-                st.error("Parola trebuie să aibă cel puțin 6 caractere.")
+                st.error(t("auth_parola_scurta"))
             else:
                 try:
                     cere_confirmare = inregistreaza(email_n, parola_n)
                     if cere_confirmare:
-                        st.success(
-                            "Cont creat! Verifică-ți emailul pentru confirmare, "
-                            "apoi intră în cont din tab-ul alăturat."
-                        )
+                        st.success(t("auth_cont_creat"))
                     else:
                         st.rerun()
                 except Exception as e_reg:
-                    st.error(f"Nu am putut crea contul: {e_reg}")
+                    st.error(t("auth_eroare_cont", eroare=e_reg))
 
     st.divider()
-    st.caption(
-        "Preferi să încerci fără cont? Poți oricând să-ți faci unul mai "
-        "târziu, dar materialele și progresul nu se vor salva."
-    )
-    if st.button("Continuă fără cont"):
+    st.caption(t("auth_vizitator_info"))
+    if st.button(t("auth_vizitator_btn")):
         intra_ca_vizitator()
         st.rerun()
 
 
 def _formular_cerere_resetare():
-    st.subheader("Resetează parola")
-    st.caption("Scrie emailul contului tău. Îți trimitem un link de resetare.")
+    st.subheader(t("auth_reset_titlu"))
+    st.caption(t("auth_reset_info"))
     with st.form("form_cerere_resetare"):
-        email = st.text_input("Email", key="reset_email")
-        trimis = st.form_submit_button("Trimite link-ul", type="primary")
+        email = st.text_input(t("auth_email"), key="reset_email")
+        trimis = st.form_submit_button(t("auth_reset_trimite"), type="primary")
     if trimis:
         if not email:
-            st.error("Scrie un email.")
+            st.error(t("auth_reset_scrie_email"))
         else:
             try:
                 trimite_email_resetare(email)
-                st.success(
-                    "Dacă există un cont cu acest email, ai primit un link de "
-                    "resetare. Verifică și folderul de spam."
-                )
-            except Exception as e:
-                st.error(f"Nu am putut trimite emailul: {e}")
+                st.success(t("auth_reset_ok"))
+            except Exception as e_reset:
+                st.error(t("auth_reset_eroare", eroare=e_reset))
 
-    if st.button("Înapoi la login", key="inapoi_login"):
+    if st.button(t("auth_inapoi_login"), key="inapoi_login"):
         st.session_state.pop("arata_resetare", None)
         st.rerun()
 
@@ -123,21 +122,18 @@ def ecran_parola_noua(access_token, refresh_token):
     indiferent de rerun-urile automate declanșate pe parcurs (de exemplu la
     scrierea cookie-ului de sesiune)."""
     _antet()
-    st.subheader("Setează o parolă nouă")
+    st.subheader(t("auth_pn_titlu"))
 
     if not st.session_state.get("sesiune_recuperare_activa"):
         ok = seteaza_sesiune_din_recuperare(access_token, refresh_token)
         if not ok:
-            st.error(
-                "Link-ul nu mai este valid (poate a expirat sau a fost deja "
-                "folosit). Cere unul nou din ecranul de login."
-            )
+            st.error(t("auth_pn_invalid"))
             return
         st.session_state["sesiune_recuperare_activa"] = True
 
     if st.session_state.get("parola_schimbata"):
-        st.success("Parola a fost schimbată. Poți continua direct în cont.")
-        if st.button("Continuă în aplicație", key="continua_dupa_resetare"):
+        st.success(t("auth_pn_ok"))
+        if st.button(t("auth_pn_continua"), key="continua_dupa_resetare"):
             for cheie in (
                 "in_recuperare_parola",
                 "recuperare_access_token",
@@ -151,22 +147,22 @@ def ecran_parola_noua(access_token, refresh_token):
 
     with st.form("form_parola_noua"):
         parola_noua = st.text_input(
-            "Parolă nouă (minimum 6 caractere)", type="password", key="pn_parola"
+            t("auth_pn_parola"), type="password", key="pn_parola"
         )
         parola_noua2 = st.text_input(
-            "Confirmă parola nouă", type="password", key="pn_parola2"
+            t("auth_pn_confirma"), type="password", key="pn_parola2"
         )
-        trimis = st.form_submit_button("Salvează parola nouă", type="primary")
+        trimis = st.form_submit_button(t("auth_pn_salveaza"), type="primary")
 
     if trimis:
         if parola_noua != parola_noua2:
-            st.error("Parolele nu coincid.")
+            st.error(t("auth_parole_diferite"))
         elif len(parola_noua) < 6:
-            st.error("Parola trebuie să aibă cel puțin 6 caractere.")
+            st.error(t("auth_parola_scurta"))
         else:
             try:
                 seteaza_parola_noua(parola_noua)
                 st.session_state["parola_schimbata"] = True
                 st.rerun()
-            except Exception as e:
-                st.error(f"Nu am putut schimba parola: {e}")
+            except Exception as e_pn:
+                st.error(t("auth_pn_eroare", eroare=e_pn))
