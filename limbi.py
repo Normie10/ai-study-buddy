@@ -384,3 +384,6 @@ def text_intrebare_ui(q):
 from texte_sectiuni import TEXTE_SECTIUNI  # noqa: E402
 
 TEXTE.update(TEXTE_SECTIUNI)
+
+from texte_autentificare import TEXTE_AUTENTIFICARE
+TEXTE.update(TEXTE_AUTENTIFICARE)
