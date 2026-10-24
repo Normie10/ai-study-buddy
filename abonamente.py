@@ -2,40 +2,23 @@
 pagină separată, care se deschide din meniul de profil. Nu există plată
 reală, iar limitele afișate nu sunt încă aplicate în aplicație."""
 
+import html
+
 import streamlit as st
 
 from baza_date import _client, iese_din_mod_vizitator, utilizator_curent
+from limbi import t
 
 PLANURI = ("gratuit", "premium")
-NUME_PLAN = {"gratuit": "Gratuit", "premium": "Premium"}
+NR_AVANTAJE = 6
 
+# Cheile "Lunar" / "Anual" sunt valori interne (nu se traduc); textele din
+# dreapta sunt chei de traducere.
 PRETURI = {
-    "Lunar": {"suma": "19", "unit": "lei / lună", "sub": "Facturat lunar"},
-    "Anual": {
-        "suma": "149",
-        "unit": "lei / an",
-        "sub": "Economisești 35% față de planul lunar",
-    },
+    "Lunar": {"suma": "19", "unit": "abon_unit_lunar", "sub": "abon_sub_lunar"},
+    "Anual": {"suma": "149", "unit": "abon_unit_anual", "sub": "abon_sub_anual"},
 }
-
-AVANTAJE = {
-    "gratuit": [
-        "Quiz, Examen, SAT, Flashcarduri și Rezumat",
-        "10 întrebări pe sesiune la Întreabă",
-        "3 materiale salvate pe cont",
-        "Ultimele 30 de rezultate în istoric",
-        "Descărcare pentru printat doar la quiz",
-        "Documente până la 150.000 de caractere",
-    ],
-    "premium": [
-        "Tot ce include planul Gratuit",
-        "50 de întrebări pe sesiune la Întreabă",
-        "Materiale salvate nelimitate",
-        "Istoric complet, cu statistici",
-        "Toate descărcările: quiz, carduri, rezultate",
-        "Documente până la 300.000 de caractere",
-    ],
-}
+PRET_GRATUIT = {"suma": "0", "unit": "abon_unit_gratuit", "sub": "abon_sub_gratuit"}
 
 CSS_ABONAMENTE = """
 <style>
@@ -199,6 +182,11 @@ CSS_ABONAMENTE = """
 """
 
 
+def nume_plan(plan):
+    """Numele afișat al unui plan (în limba interfeței)."""
+    return t(f"abon_plan_{plan}")
+
+
 # ------------------------- planul ales -------------------------
 def plan_curent():
     """Planul ales de utilizator. Vizitatorii sunt mereu pe planul Gratuit."""
@@ -245,28 +233,34 @@ def inchide_abonamente():
 
 # ------------------------- aspect -------------------------
 def _card_html(plan, curent, facturare):
-    if plan == "premium":
-        pret = PRETURI[facturare]
-    else:
-        pret = {"suma": "0", "unit": "lei", "sub": "Pentru început"}
+    pret = PRETURI[facturare] if plan == "premium" else PRET_GRATUIT
 
     if plan == curent:
-        eticheta = '<span class="plan-eticheta plan-eticheta-curent">Plan actual</span>'
+        text_eticheta = html.escape(t("abon_eticheta_curent"))
+        eticheta = (
+            '<span class="plan-eticheta plan-eticheta-curent">'
+            f"{text_eticheta}</span>"
+        )
     elif plan == "premium":
-        eticheta = '<span class="plan-eticheta">Recomandat</span>'
+        text_eticheta = html.escape(t("abon_eticheta_recomandat"))
+        eticheta = f'<span class="plan-eticheta">{text_eticheta}</span>'
     else:
         eticheta = ""
 
     clasa = "plan plan-premium" if plan == "premium" else "plan"
-    lista = "".join(f"<li>{text}</li>" for text in AVANTAJE[plan])
+    avantaje = [t(f"abon_av_{plan}_{n}") for n in range(1, NR_AVANTAJE + 1)]
+    lista = "".join(f"<li>{html.escape(text)}</li>" for text in avantaje)
+    unitate = html.escape(t(pret["unit"]))
+    sub = html.escape(t(pret["sub"]))
     # totul pe un singur rând, fără linii goale, altfel Markdown strică HTML-ul
     return (
         f'<div class="{clasa}">'
-        f'<div class="plan-cap"><span class="plan-nume">{NUME_PLAN[plan]}</span>'
+        f'<div class="plan-cap"><span class="plan-nume">'
+        f"{html.escape(nume_plan(plan))}</span>"
         f"{eticheta}</div>"
         f'<div class="plan-pret"><span class="plan-suma">{pret["suma"]}</span>'
-        f'<span class="plan-unit">{pret["unit"]}</span></div>'
-        f'<div class="plan-sub">{pret["sub"]}</div>'
+        f'<span class="plan-unit">{unitate}</span></div>'
+        f'<div class="plan-sub">{sub}</div>'
         f'<ul class="plan-lista">{lista}</ul>'
         "</div>"
     )
@@ -278,30 +272,33 @@ def afiseaza_pagina_abonamente():
     st.markdown(CSS_ABONAMENTE, unsafe_allow_html=True)
 
     if st.button(
-        "Înapoi la aplicație", key="abon_inapoi", icon=":material/arrow_back:"
+        t("abon_inapoi"), key="abon_inapoi", icon=":material/arrow_back:"
     ):
         inchide_abonamente()
         st.rerun()
 
     st.markdown(
-        '<div class="abon-antet"><div class="abon-titlu">Abonamente</div>'
-        '<div class="abon-sub">Alege planul care ți se potrivește. '
-        "Îl poți schimba oricând.</div></div>",
+        '<div class="abon-antet">'
+        f'<div class="abon-titlu">{html.escape(t("abon_pagina_titlu"))}</div>'
+        f'<div class="abon-sub">{html.escape(t("abon_pagina_sub"))}</div></div>',
         unsafe_allow_html=True,
     )
     st.markdown(
-        '<div class="abon-prototip"><span class="abon-pastila">Prototip</span>'
-        "Nu se percepe nicio taxă. Prețurile sunt demonstrative.</div>",
+        '<div class="abon-prototip">'
+        f'<span class="abon-pastila">{html.escape(t("abon_prototip_pastila"))}</span>'
+        f'{html.escape(t("abon_prototip_text"))}</div>',
         unsafe_allow_html=True,
     )
 
     facturare = st.radio(
-        "Facturare",
+        t("abon_facturare_eticheta"),
         ["Lunar", "Anual"],
         horizontal=True,
         key="abon_facturare",
         label_visibility="collapsed",
-        format_func=lambda v: "Lunar" if v == "Lunar" else "Anual (economisești 35%)",
+        format_func=lambda v: (
+            t("abon_fact_lunar") if v == "Lunar" else t("abon_fact_anual")
+        ),
     )
     curent = plan_curent()
     st.markdown(
@@ -317,14 +314,14 @@ def afiseaza_pagina_abonamente():
     with c1:
         if curent == "gratuit":
             st.button(
-                "Planul tău actual",
+                t("abon_btn_gratuit_curent"),
                 key="abon_gratuit_curent",
                 disabled=True,
                 use_container_width=True,
             )
         else:
             st.button(
-                "Treci la Gratuit",
+                t("abon_btn_treci_gratuit"),
                 key="abon_treci_gratuit",
                 on_click=_alege_plan,
                 args=("gratuit",),
@@ -333,7 +330,7 @@ def afiseaza_pagina_abonamente():
     with c2:
         if not este_cont:
             if st.button(
-                "Creează cont ca să alegi Premium",
+                t("abon_btn_cont"),
                 key="abon_cont_nou",
                 type="primary",
                 use_container_width=True,
@@ -343,14 +340,14 @@ def afiseaza_pagina_abonamente():
                 st.rerun()
         elif curent == "premium":
             st.button(
-                "Premium activ",
+                t("abon_btn_premium_activ"),
                 key="abon_premium_curent",
                 disabled=True,
                 use_container_width=True,
             )
         else:
             st.button(
-                "Alege Premium",
+                t("abon_btn_alege_premium"),
                 key="abon_alege_premium",
                 on_click=_alege_plan,
                 args=("premium",),
@@ -359,15 +356,8 @@ def afiseaza_pagina_abonamente():
             )
 
     if st.session_state.get("plan_doar_sesiune"):
-        st.warning(
-            "Nu am putut salva planul pe cont; e valabil doar cât ții pagina "
-            "deschisă."
-        )
-    st.caption(
-        "Obiectivul zilnic, seria și explicațiile răspunsurilor sunt gratuite "
-        "pentru toți. Limitele din planuri sunt demonstrative și nu sunt încă "
-        "aplicate în aplicație."
-    )
+        st.warning(t("abon_doar_sesiune"))
+    st.caption(t("abon_nota"))
 
 
 # ------------------------- intrări în meniul de profil -------------------------
@@ -375,9 +365,9 @@ def antet_profil(email):
     """Înlocuiește linia cu emailul din meniul de profil: email, planul curent
     și butonul care deschide pagina de abonamente."""
     st.write(f"**{email}**")
-    st.caption(f"Plan: {NUME_PLAN[plan_curent()]}")
+    st.caption(t("abon_profil_plan", plan=nume_plan(plan_curent())))
     if st.button(
-        "Abonamente",
+        t("abon_profil_btn"),
         key="profil_abonamente",
         icon=":material/workspace_premium:",
         use_container_width=True,
@@ -389,12 +379,12 @@ def butoane_vizitator():
     """Pentru vizitatori: butonul de planuri, apoi „Creează cont”. Întoarce
     True dacă s-a apăsat „Creează cont”."""
     if st.button(
-        "Vezi planurile",
+        t("abon_viz_planuri"),
         key="profil_planuri_viz",
         icon=":material/workspace_premium:",
         use_container_width=True,
     ):
         deschide_abonamente()
     return st.button(
-        "Creează cont", key="profil_creeaza_cont", use_container_width=True
+        t("abon_viz_cont"), key="profil_creeaza_cont", use_container_width=True
     )
