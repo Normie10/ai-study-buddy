@@ -281,6 +281,8 @@ CSS_OBIECTIV = """
 
 def _unitate_zile(n):
     """„zi”, „zile” sau „de zile”, după regula din română (20 de zile)."""
+    if limba_ui() == "en":
+        return "day" if n == 1 else "days"
     if n == 1:
         return "zi"
     rest = n % 100
@@ -351,6 +353,7 @@ def _e_sarbatoare(user_id, azi, azi_nr):
 
 
 def _saptamana_html(zile, azi):
+    litere = t("ob.zile_sapt")
     bucati = []
     for decalaj in range(6, -1, -1):
         zi = azi - timedelta(days=decalaj)
@@ -359,7 +362,7 @@ def _saptamana_html(zile, azi):
             clase += " ob-zi-activa"
         if zi == azi:
             clase += " ob-zi-azi"
-        bucati.append(f'<span class="{clase}">{"LMMJVSD"[zi.weekday()]}</span>')
+        bucati.append(f'<span class="{clase}">{litere[zi.weekday()]}</span>')
     return '<div class="ob-saptamana">' + "".join(bucati) + "</div>"
 
 
@@ -367,15 +370,15 @@ def _card_html(zile, azi, azi_nr, obiectiv, curenta, record, sarbatoare):
     procent = min(100, round(100 * azi_nr / obiectiv))
     atins = azi_nr >= obiectiv
     if atins:
-        mesaj = "Obiectiv atins azi. Bravo!"
+        mesaj = t("ob.atins")
     elif not zile:
-        mesaj = "Termină un quiz sau un test ca să începi seria."
+        mesaj = t("ob.incepe")
     elif azi_nr == 0 and curenta > 0:
-        mesaj = "Termină o activitate azi ca să-ți păstrezi seria."
+        mesaj = t("ob.pastreaza")
     else:
         ramase = obiectiv - azi_nr
-        cuvant = "activitate" if ramase == 1 else "activități"
-        mesaj = f"Mai ai {ramase} {cuvant} până la obiectiv."
+        cuvant = t("ob.activitate") if ramase == 1 else t("ob.activitati")
+        mesaj = t("ob.ramase", r=ramase, cuvant=cuvant)
 
     if azi_nr >= 1:
         stare_foc = "ob-foc-activ"
@@ -390,12 +393,8 @@ def _card_html(zile, azi, azi_nr, obiectiv, curenta, record, sarbatoare):
 
     felicitare = ""
     if sarbatoare:
-        text = (
-            "Ai început o serie nouă!"
-            if curenta == 1
-            else "Zi nouă în serie! Continuă și mâine."
-        )
-        felicitare = f'<div class="ob-felicitare">{text}</div>'
+        text = t("ob.serie_noua") if curenta == 1 else t("ob.zi_noua")
+        felicitare = f'<div class="ob-felicitare">{html.escape(text)}</div>'
 
     # totul pe un singur rând, fără linii goale, altfel Markdown strică HTML-ul
     return "".join(
@@ -403,25 +402,26 @@ def _card_html(zile, azi, azi_nr, obiectiv, curenta, record, sarbatoare):
             '<div class="obiectiv">',
             f'<div class="{clasa_scop}">',
             '<div class="ob-eticheta"><span class="ob-ico ob-ico-tinta"></span>'
-            "Obiectiv de azi</div>",
+            f'{html.escape(t("ob.titlu"))}</div>',
             f'<div class="ob-valoare"><span class="ob-nr">{azi_nr} / {obiectiv}</span>'
-            '<span class="ob-unit">activități terminate</span></div>',
+            f'<span class="ob-unit">{html.escape(t("ob.unit_activitati"))}</span></div>',
             f'<div class="ob-bara"><div class="ob-umplere" '
             f'style="width:{procent}%"></div></div>',
             f'<div class="ob-nota">{html.escape(mesaj)}</div>',
             "</div>",
             f'<div class="{clasa_serie}">',
-            '<div class="ob-eticheta">Serie</div>',
+            f'<div class="ob-eticheta">{html.escape(t("ob.serie"))}</div>',
             '<div class="ob-rand">',
             f'<div class="ob-foc-caseta {stare_foc}"><div class="ob-foc-mare"></div>'
             f"{scanteie}</div>",
             f'<div class="ob-valoare"><span class="ob-nr">{curenta}</span>'
-            f'<span class="ob-unit">{_unitate_zile(curenta)} la rând</span></div>',
+            f'<span class="ob-unit">'
+            f'{html.escape(t("ob.la_rand", unit=_unitate_zile(curenta)))}</span></div>',
             "</div>",
             felicitare,
             _saptamana_html(zile, azi),
-            f'<div class="ob-nota">Cea mai lungă serie: '
-            f"{record} {_unitate_zile(record)}</div>",
+            f'<div class="ob-nota">'
+            f'{html.escape(t("ob.record", n=record, unit=_unitate_zile(record)))}</div>',
             "</div>",
             "</div>",
         ]
@@ -440,7 +440,7 @@ def afiseaza_obiectiv(zona):
         try:
             zile = _zile_activitate(user.id)
         except Exception:
-            st.caption("Nu am putut încărca obiectivul zilnic acum.")
+            st.caption(t("ob.eroare"))
             return
 
         azi = datetime.now(ZoneInfo(FUS_ORAR)).date()
@@ -453,21 +453,15 @@ def afiseaza_obiectiv(zona):
             unsafe_allow_html=True,
         )
 
-        with st.popover("Schimbă obiectivul", icon=":material/tune:"):
+        with st.popover(t("ob.schimba"), icon=":material/tune:"):
             nou = st.number_input(
-                "Activități pe zi", 1, 10, obiectiv, key="obiectiv_nou"
+                t("ob.pe_zi"), 1, 10, obiectiv, key="obiectiv_nou"
             )
-            st.caption(
-                "O activitate este un rezultat salvat: Quiz, Examen, SAT, "
-                "Adevărat/Fals sau Completează. Flashcardurile nu se numără."
-            )
+            st.caption(t("ob.ce_numara"))
             if st.button(
-                "Salvează obiectivul", key="obiectiv_salveaza", type="primary"
+                t("ob.salveaza"), key="obiectiv_salveaza", type="primary"
             ):
                 st.session_state["obiectiv_doar_sesiune"] = not seteaza_obiectiv(nou)
                 st.rerun()
             if st.session_state.get("obiectiv_doar_sesiune"):
-                st.warning(
-                    "Nu am putut salva obiectivul pe cont; e valabil doar cât "
-                    "ții pagina deschisă."
-                )
+                st.warning(t("ob.doar_sesiune"))
