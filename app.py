@@ -80,7 +80,7 @@ from taburi import (  # noqa: E402
 from utile import fmt  # noqa: E402
 from stil_notificari import CSS_NOTIFICARI  # noqa: E402
 from obiectiv_zilnic import afiseaza_obiectiv  # noqa: E402
-from abonamente import antet_profil, butoane_vizitator  # noqa: E402
+from abonamente import afiseaza_pagina_abonamente, antet_profil, butoane_vizitator  # noqa: E402
 
 load_dotenv()
 
@@ -379,6 +379,11 @@ if utilizator_curent() is None and not este_vizitator():
     st.stop()
 
 # ------------------------- pagina -------------------------
+# pagina de abonamente: înlocuiește tot restul paginii (și meniul de profil,
+# ca să nu rămână deschis peste ea)
+if st.session_state.get("pagina_abonamente"):
+    afiseaza_pagina_abonamente()
+    st.stop()
 with st.container(key="profil_fixat"):
     if utilizator_curent() is not None:
         eticheta_profil = utilizator_curent().email.split("@")[0]
