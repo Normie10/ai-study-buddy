@@ -7,6 +7,7 @@ Așa arată orice secțiune nouă: un fișier în folderul sectiuni/ cu cele pat
 setări de mai jos și o funcție afiseaza(ctx). Aplicația o găsește singură.
 """
 
+import html
 from collections import Counter
 
 import streamlit as st
@@ -14,8 +15,9 @@ import streamlit as st
 from baza_date import salveaza_progres
 from export_html import html_quiz
 from generare import genereaza_teanc_af
+from limbi import descriere_sectiune, eticheta_grup_ui, t, unitate_sg
 from memorie import preia_din_teanc
-from utile import eticheta_grup
+from stil_sectiuni import injecteaza_stiluri
 
 NUME = "Adevărat / Fals"
 ORDINE = 25  # poziția în listă: numerele mici apar primele
@@ -31,6 +33,16 @@ CHEIE = "afs_sesiune"  # unde ținem în memorie sesiunea curentă
 def _md(text):
     """Semnul $ nu trebuie interpretat ca formulă."""
     return str(text).replace("$", "\\$")
+
+
+def _html(text):
+    """Text sigur pentru HTML: fără etichete, fără formule, cu rânduri noi."""
+    return html.escape(str(text)).replace("$", "&#36;").replace("\n", "<br>")
+
+
+def _var(idx):
+    """Numele variantei (0 = Adevărat, 1 = Fals), în limba interfeței."""
+    return t("af.adevarat") if idx == 0 else t("af.fals")
 
 
 def _porneste(intrebari, info, hash_material):
@@ -72,14 +84,25 @@ def _repeta_gresite():
 
 
 def _setari(ctx):
-    c1, c2 = st.columns(2)
-    nr = c1.number_input("Număr afirmații", 3, 30, 10, key="afs_nr")
-    dif = c2.selectbox(
-        "Dificultate", ["ușoară", "medie", "grea"], index=1, key="afs_dif"
-    )
+    with st.container(border=True):
+        c1, c2 = st.columns(2)
+        nr = c1.number_input(t("af.nr"), 3, 30, 10, key="afs_nr")
+        dif = c2.selectbox(
+            t("comun.dificultate"),
+            ["ușoară", "medie", "grea"],
+            index=1,
+            format_func=lambda v: t(f"dif.{v}"),
+            key="afs_dif",
+        )
+        porneste = st.button(
+            t("sect.start"),
+            key="afs_start",
+            type="primary",
+            use_container_width=True,
+        )
 
-    if st.button("Începe", key="afs_start"):
-        with st.spinner("Pregătesc afirmațiile..."):
+    if porneste:
+        with st.spinner(t("af.spinner")):
             try:
                 elemente, model, nota = preia_din_teanc(
                     ("af", ctx.hash_material, dif, ctx.limba),
@@ -90,14 +113,14 @@ def _setari(ctx):
                     ),
                 )
             except Exception as e_af:
-                st.error(f"A apărut o eroare: {e_af}")
+                st.error(t("comun.eroare", e=e_af))
                 return
         if not elemente:
-            st.error("Nu am găsit afirmații în acest material.")
+            st.error(t("af.fara_elemente"))
             return
         info = f"{model} · {nota}"
         if len(elemente) < nr:
-            info += f" (am găsit doar {len(elemente)} afirmații distincte)"
+            info += t("af.doar_n", n=len(elemente))
         _porneste(elemente, info, ctx.hash_material)
         st.rerun()
 
@@ -111,24 +134,28 @@ def _intrebare(s):
         1 for j, a in s["raspunsuri"].items() if a == s["intrebari"][j]["corect"]
     )
 
-    st.progress(i / total, text=f"Afirmația {i + 1} din {total}")
-    st.caption(f"Model: {s['info']}")
+    st.progress(i / total, text=t("af.progres", i=i + 1, total=total))
+    st.caption(t("comun.model", info=s["info"]))
 
-    with st.container(border=True):
-        st.markdown("**Adevărat sau fals?**")
-        st.subheader(_md(q["intrebare"]))
+    st.markdown(
+        '<div class="fc fc-mic">'
+        f'<div class="fc-eticheta">{html.escape(t("af.intrebare"))}</div>'
+        f'<div class="fc-text">{_html(q["intrebare"])}</div>'
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
     if raspuns is None:
         b1, b2 = st.columns(2)
         b1.button(
-            "Adevărat",
+            t("af.adevarat"),
             on_click=_raspunde,
             args=(0,),
             key="afs_adev",
             use_container_width=True,
         )
         b2.button(
-            "Fals",
+            t("af.fals"),
             on_click=_raspunde,
             args=(1,),
             key="afs_fals",
@@ -136,21 +163,24 @@ def _intrebare(s):
         )
     else:
         if raspuns == q["corect"]:
-            st.success("Corect!")
+            st.success(t("af.corect"))
         else:
-            st.error(f"Greșit. Răspunsul corect: {q['variante'][q['corect']]}.")
+            st.error(t("af.gresit", r=_var(q["corect"])))
         if q.get("explicatie"):
             st.markdown(_md(q["explicatie"]))
-        st.caption(f"{q.get('unitate', 'pagina').capitalize()} {q.get('pagina', '?')}")
+        st.caption(
+            f"{unitate_sg(q.get('unitate', 'pagina'), majuscula=True)} "
+            f"{q.get('pagina', '?')}"
+        )
         ultima = i + 1 >= total
         st.button(
-            "Vezi rezultatul" if ultima else "Următoarea",
+            t("sect.vezi_rezultat") if ultima else t("sect.urmatoarea"),
             on_click=_urmatoarea,
             key="afs_next",
             use_container_width=True,
             type="primary",
         )
-    st.caption(f"Corecte până acum: {corecte} din {len(s['raspunsuri'])}")
+    st.caption(t("sect.corecte_pana_acum", c=corecte, n=len(s["raspunsuri"])))
 
 
 def _rezultate(s):
@@ -167,38 +197,34 @@ def _rezultate(s):
         salveaza_progres("af", scor, total)
         s["progres_salvat"] = True
 
-    st.progress(1.0, text="Ai terminat")
+    st.progress(1.0, text=t("sect.terminat"))
     c1, c2 = st.columns(2)
-    c1.metric("Scor", f"{scor}/{total}")
-    c2.metric("Procent", f"{procent}%")
+    c1.metric(t("sect.scor"), f"{scor}/{total}")
+    c2.metric(t("sect.procent"), f"{procent}%")
 
     if not gresite:
-        st.success("Ai răspuns corect la toate afirmațiile. Bravo!")
+        st.success(t("af.toate_corecte"))
     else:
-        st.subheader("Ce să recapitulezi")
-        grupuri = Counter(eticheta_grup(q) for _, q in gresite)
+        st.subheader(t("sect.recapitulezi"))
+        grupuri = Counter(eticheta_grup_ui(q) for _, q in gresite)
         for eticheta, nr in grupuri.most_common():
-            cuvant = "afirmație greșită" if nr == 1 else "afirmații greșite"
-            st.markdown(f"- **{eticheta}**: {nr} {cuvant}")
-        st.caption(
-            "Locurile indicate sunt cele date de model pentru fiecare afirmație. "
-            "Verifică-le în document."
-        )
-        with st.expander("Vezi afirmațiile greșite"):
+            cuvant = t("af.afirmatie_gresita") if nr == 1 else t("af.afirmatii_gresite")
+            st.markdown(t("sect.grup", eticheta=eticheta, n=nr, cuvant=cuvant))
+        st.caption(t("af.nota"))
+        with st.expander(t("af.vezi_gresite")):
             for i, q in gresite:
                 ales = s["raspunsuri"].get(i)
-                ales_text = q["variante"][ales] if ales is not None else "fără răspuns"
+                ales_text = _var(ales) if ales is not None else t("sect.fara_raspuns")
                 st.markdown(f"**{i + 1}. {_md(q['intrebare'])}**")
                 st.markdown(
-                    f"Răspunsul tău: {ales_text}. "
-                    f"Răspuns corect: {q['variante'][q['corect']]}."
+                    t("sect.raspuns_tau_corect", x=ales_text, y=_var(q["corect"]))
                 )
                 if q.get("explicatie"):
                     st.caption(_md(q["explicatie"]))
                 st.divider()
 
     st.download_button(
-        "Descarcă afirmațiile pentru printat (.html)",
+        t("af.descarca"),
         data=html_quiz(s["intrebari"]),
         file_name="adevarat_fals.html",
         mime="text/html",
@@ -208,13 +234,13 @@ def _rezultate(s):
     b1, b2 = st.columns(2)
     if gresite:
         b1.button(
-            "Repetă doar afirmațiile greșite",
+            t("af.repeta"),
             on_click=_repeta_gresite,
             key="afs_repeta",
             use_container_width=True,
         )
     b2.button(
-        "Început nou",
+        t("sect.nou"),
         on_click=_inceput_nou,
         key="afs_nou",
         use_container_width=True,
@@ -223,7 +249,8 @@ def _rezultate(s):
 
 def afiseaza(ctx):
     """Funcția pe care o apelează aplicația pentru această secțiune."""
-    st.caption(DESCRIERE)
+    injecteaza_stiluri()
+    st.caption(descriere_sectiune(NUME, DESCRIERE))
 
     s = st.session_state.get(CHEIE)
     if s and s["hash"] != ctx.hash_material:
