@@ -344,3 +344,38 @@ TEXTE = {
         "The section “{nume}” raised an error: {e}",
     ),
 }
+
+# ------------------------- texte pentru taburile de bază -------------------------
+from texte_taburi import TEXTE_TABURI  # noqa: E402
+
+TEXTE.update(TEXTE_TABURI)
+
+
+def unitate_sg(unitate, majuscula=False):
+    """„pagina” / „secțiunea” (sau page / section), la singular."""
+    cheie = f"unitate1.{unitate}"
+    text = t(cheie) if cheie in TEXTE else str(unitate)
+    return text.capitalize() if majuscula else text
+
+
+def sursa_ui(q):
+    """De unde provine o întrebare: tema (SAT) sau pagina/secțiunea."""
+    if q.get("tema"):
+        return q["tema"]
+    return f"{unitate_sg(q.get('unitate', 'pagina'))} {q.get('pagina', '?')}"
+
+
+def eticheta_grup_ui(q):
+    """Eticheta după care se grupează greșelile în raportul de la examen."""
+    if q.get("tema"):
+        return q["tema"]
+    u = unitate_sg(q.get("unitate", "pagina"), majuscula=True)
+    p = str(q.get("pagina", "?"))
+    return t("grup.necunoscuta", u=u) if p == "?" else f"{u} {p}"
+
+
+def text_intrebare_ui(q):
+    """Textul întrebării, cu „Adevărat sau fals” la afirmații."""
+    if q.get("tip_intrebare") == "af":
+        return t("af.prefix", intrebare=q["intrebare"])
+    return q["intrebare"]
