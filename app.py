@@ -51,6 +51,7 @@ from abonamente import (  # noqa: E402
     antet_profil,
     butoane_vizitator,
 )
+
 from autentificare import ecran_autentificare, ecran_parola_noua  # noqa: E402
 from baza_date import (  # noqa: E402
     delogheaza,
