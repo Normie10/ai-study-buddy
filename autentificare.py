@@ -12,7 +12,7 @@ from baza_date import (
     seteaza_sesiune_din_recuperare,
     trimite_email_resetare,
 )
-from limbi import t
+from limbi import selector_limba, t
 
 
 def _antet():
@@ -24,7 +24,7 @@ def _antet():
         '<div class="hero-sub">' + t("auth_hero_sub") + "</div>"
         "</div></div>"
     )
-    st.markdown(html_antet, unsafe_allow_html=True)
+    st.markdown(html_antet, unsafe_allow_html=True)     selector_limba()
 
 
 def ecran_autentificare():
