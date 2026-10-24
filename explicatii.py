@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+from limbi import t
 from utile import md
 
 
@@ -19,16 +20,16 @@ def de_ce_gresit(q, ales):
 def arata_motiv_greseala(q, ales):
     motiv = de_ce_gresit(q, ales)
     if motiv:
-        st.markdown(f"**De ce varianta ta e greșită:** {md(motiv, q)}")
+        st.markdown(f"**{t('expl.de_ce')}** {md(motiv, q)}")
 
 
 def arata_corect_si_motiv(q, ales):
     """Folosită în rezultatele examenului."""
-    st.markdown(f"Răspuns corect: {md(q['variante'][q['corect']], q)}")
+    st.markdown(t("expl.corect", r=md(q["variante"][q["corect"]], q)))
     arata_motiv_greseala(q, ales)
 
 
 def arata_greseala_quiz(i, q, corect, ales):
     """Folosită în Quiz, după predare."""
-    st.error(f"{i + 1}. Greșit. Răspuns corect: {corect}")
+    st.error(t("expl.gresit_quiz", i=i + 1, corect=corect))
     arata_motiv_greseala(q, ales)
