@@ -387,3 +387,6 @@ TEXTE.update(TEXTE_SECTIUNI)
 
 from texte_autentificare import TEXTE_AUTENTIFICARE
 TEXTE.update(TEXTE_AUTENTIFICARE)
+
+from texte_abonamente import TEXTE_ABONAMENTE
+TEXTE.update(TEXTE_ABONAMENTE)
