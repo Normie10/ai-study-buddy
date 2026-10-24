@@ -1,6 +1,6 @@
-"""Prototipul paginii de abonamente: două planuri (Gratuit și Premium), într-o
-fereastră care se deschide din meniul de profil. Nu există plată reală, iar
-limitele afișate nu sunt încă aplicate în aplicație."""
+"""Prototipul paginii de abonamente: două planuri (Gratuit și Premium), pe o
+pagină separată, care se deschide din meniul de profil. Nu există plată
+reală, iar limitele afișate nu sunt încă aplicate în aplicație."""
 
 import streamlit as st
 
@@ -12,9 +12,9 @@ NUME_PLAN = {"gratuit": "Gratuit", "premium": "Premium"}
 PRETURI = {
     "Lunar": {"suma": "19", "unit": "lei / lună", "sub": "Facturat lunar"},
     "Anual": {
-        "suma": "12,4",
-        "unit": "lei / lună",
-        "sub": "149 lei facturat anual, economisești 35%",
+        "suma": "149",
+        "unit": "lei / an",
+        "sub": "Economisești 35% față de planul lunar",
     },
 }
 
@@ -39,6 +39,20 @@ AVANTAJE = {
 
 CSS_ABONAMENTE = """
 <style>
+.abon-antet {
+    margin: 0.5rem 0 0.9rem;
+}
+.abon-titlu {
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+}
+.abon-sub {
+    margin-top: 0.35rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
 .abon-prototip {
     display: flex;
     align-items: center;
@@ -166,6 +180,18 @@ CSS_ABONAMENTE = """
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
 }
+/* Butoanele dezactivate (planul actual): vizibile, dar liniștite */
+[class*="st-key-abon_"] button:disabled {
+    background: transparent !important;
+    border: 1px solid var(--border-hover) !important;
+    color: var(--muted) !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+}
+.st-key-abon_premium_curent button:disabled {
+    border-color: rgba(229, 56, 59, 0.5) !important;
+    color: var(--accent) !important;
+}
 @media (max-width: 640px) {
     .planuri { grid-template-columns: 1fr; }
 }
@@ -207,6 +233,16 @@ def _alege_plan(plan):
     st.session_state["plan_doar_sesiune"] = not seteaza_plan(plan)
 
 
+# ------------------------- deschidere / închidere pagină -------------------------
+def deschide_abonamente():
+    st.session_state["pagina_abonamente"] = True
+    st.rerun()
+
+
+def inchide_abonamente():
+    st.session_state.pop("pagina_abonamente", None)
+
+
 # ------------------------- aspect -------------------------
 def _card_html(plan, curent, facturare):
     if plan == "premium":
@@ -236,9 +272,23 @@ def _card_html(plan, curent, facturare):
     )
 
 
-@st.dialog("Abonamente", width="large")
-def fereastra_abonamente():
+def afiseaza_pagina_abonamente():
+    """Pagina de abonamente. Înlocuiește tot restul paginii, inclusiv meniul
+    de profil (așa nu poate rămâne deschis peste ea)."""
     st.markdown(CSS_ABONAMENTE, unsafe_allow_html=True)
+
+    if st.button(
+        "Înapoi la aplicație", key="abon_inapoi", icon=":material/arrow_back:"
+    ):
+        inchide_abonamente()
+        st.rerun()
+
+    st.markdown(
+        '<div class="abon-antet"><div class="abon-titlu">Abonamente</div>'
+        '<div class="abon-sub">Alege planul care ți se potrivește. '
+        "Îl poți schimba oricând.</div></div>",
+        unsafe_allow_html=True,
+    )
     st.markdown(
         '<div class="abon-prototip"><span class="abon-pastila">Prototip</span>'
         "Nu se percepe nicio taxă. Prețurile sunt demonstrative.</div>",
@@ -289,6 +339,7 @@ def fereastra_abonamente():
                 use_container_width=True,
             ):
                 iese_din_mod_vizitator()
+                inchide_abonamente()
                 st.rerun()
         elif curent == "premium":
             st.button(
@@ -322,7 +373,7 @@ def fereastra_abonamente():
 # ------------------------- intrări în meniul de profil -------------------------
 def antet_profil(email):
     """Înlocuiește linia cu emailul din meniul de profil: email, planul curent
-    și butonul care deschide fereastra de abonamente."""
+    și butonul care deschide pagina de abonamente."""
     st.write(f"**{email}**")
     st.caption(f"Plan: {NUME_PLAN[plan_curent()]}")
     if st.button(
@@ -331,7 +382,7 @@ def antet_profil(email):
         icon=":material/workspace_premium:",
         use_container_width=True,
     ):
-        fereastra_abonamente()
+        deschide_abonamente()
 
 
 def butoane_vizitator():
@@ -343,7 +394,7 @@ def butoane_vizitator():
         icon=":material/workspace_premium:",
         use_container_width=True,
     ):
-        fereastra_abonamente()
+        deschide_abonamente()
     return st.button(
         "Creează cont", key="profil_creeaza_cont", use_container_width=True
     )
