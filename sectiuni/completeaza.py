@@ -10,7 +10,9 @@ AI o singură dată la generare, ca să nu facem o cerere nouă la Google la
 fiecare verificare.
 """
 
+import html
 import json
+import re
 import unicodedata
 from collections import Counter
 
@@ -18,8 +20,10 @@ import streamlit as st
 
 from baza_date import salveaza_progres
 from generare import cere_model
+from limbi import descriere_sectiune, eticheta_grup_ui, t, unitate_sg
 from memorie import preia_din_teanc
-from utile import eticheta_grup, text_din_unitati
+from stil_sectiuni import injecteaza_stiluri
+from utile import text_din_unitati
 
 NUME = "Completează"
 ORDINE = 27  # poziția în listă: numerele mici apar primele
@@ -141,7 +145,7 @@ Reguli:
 TEXT:
 {text_din_unitati(unitati, eticheta)}"""
     return cere_model(
-        client, prompt, lambda t: _valideaza_completare(_parse_json(t), eticheta)
+        client, prompt, lambda t_: _valideaza_completare(_parse_json(t_), eticheta)
     )
 
 
@@ -149,6 +153,22 @@ TEXT:
 def _md(text):
     """Semnul $ nu trebuie interpretat ca formulă."""
     return str(text).replace("$", "\\$")
+
+
+def _html(text):
+    """Text sigur pentru HTML: fără etichete, fără formule, cu rânduri noi."""
+    return html.escape(str(text)).replace("$", "&#36;").replace("\n", "<br>")
+
+
+def _propozitie_html(q, completat=False):
+    """Propoziția pe card: spațiul liber e o linie roșie; după răspuns se
+    umple cu cuvântul corect."""
+    text = _html(q["intrebare"])
+    if completat:
+        gol = f'<span class="fc-gol fc-gol-plin">{_html(q["raspuns"])}</span>'
+    else:
+        gol = '<span class="fc-gol"></span>'
+    return re.sub(r"_{5,}", lambda _m: gol, text)
 
 
 def _porneste(intrebari, info, hash_material):
@@ -196,14 +216,25 @@ def _repeta_gresite():
 
 
 def _setari(ctx):
-    c1, c2 = st.columns(2)
-    nr = c1.number_input("Număr întrebări", 3, 30, 10, key="comp_nr")
-    dif = c2.selectbox(
-        "Dificultate", ["ușoară", "medie", "grea"], index=1, key="comp_dif"
-    )
+    with st.container(border=True):
+        c1, c2 = st.columns(2)
+        nr = c1.number_input(t("comun.nr_intrebari"), 3, 30, 10, key="comp_nr")
+        dif = c2.selectbox(
+            t("comun.dificultate"),
+            ["ușoară", "medie", "grea"],
+            index=1,
+            format_func=lambda v: t(f"dif.{v}"),
+            key="comp_dif",
+        )
+        porneste = st.button(
+            t("sect.start"),
+            key="comp_start",
+            type="primary",
+            use_container_width=True,
+        )
 
-    if st.button("Începe", key="comp_start"):
-        with st.spinner("Pregătesc întrebările..."):
+    if porneste:
+        with st.spinner(t("comp.spinner")):
             try:
                 elemente, model, nota = preia_din_teanc(
                     ("comp", ctx.hash_material, dif, ctx.limba),
@@ -214,14 +245,14 @@ def _setari(ctx):
                     ),
                 )
             except Exception as e_comp:
-                st.error(f"A apărut o eroare: {e_comp}")
+                st.error(t("comun.eroare", e=e_comp))
                 return
         if not elemente:
-            st.error("Nu am găsit întrebări potrivite în acest material.")
+            st.error(t("comp.fara_elemente"))
             return
         info = f"{model} · {nota}"
         if len(elemente) < nr:
-            info += f" (am găsit doar {len(elemente)} întrebări distincte)"
+            info += t("comp.doar_n", n=len(elemente))
         _porneste(elemente, info, ctx.hash_material)
         st.rerun()
 
@@ -233,41 +264,50 @@ def _intrebare(s):
     stare = s["raspunsuri"].get(i)
     corecte = sum(1 for v in s["raspunsuri"].values() if v[1])
 
-    st.progress(i / total, text=f"Întrebarea {i + 1} din {total}")
-    st.caption(f"Model: {s['info']}")
+    st.progress(i / total, text=t("comp.progres", i=i + 1, total=total))
+    st.caption(t("comun.model", info=s["info"]))
 
-    with st.container(border=True):
-        st.markdown("**Completează spațiul liber:**")
-        st.subheader(_md(q["intrebare"]))
+    st.markdown(
+        '<div class="fc fc-mic">'
+        f'<div class="fc-eticheta">{html.escape(t("comp.eticheta"))}</div>'
+        f'<div class="fc-text">{_propozitie_html(q, completat=stare is not None)}</div>'
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
     if stare is None:
-        raspuns_dat = st.text_input("Răspunsul tău", key=f"comp_text_{i}")
-        if st.button("Verifică", key=f"comp_verifica_{i}", type="primary"):
+        # într-un formular, ca Enter să trimită răspunsul
+        with st.form(f"comp_form_{i}"):
+            raspuns_dat = st.text_input(t("comp.raspunsul_tau"), key=f"comp_text_{i}")
+            trimis = st.form_submit_button(
+                t("comp.verifica"), type="primary", use_container_width=True
+            )
+        if trimis:
             _verifica(i, raspuns_dat, q)
             st.rerun()
     else:
         text_dat, e_corect, aproape = stare
         if e_corect and not aproape:
-            st.success(f"Corect! Ai scris: „{text_dat}”.")
+            st.success(t("comp.corect", x=text_dat))
         elif e_corect and aproape:
-            st.success(
-                f"Corect (ai greșit puțin scrierea). Ai scris: „{text_dat}”, "
-                f"forma corectă e „{q['raspuns']}”."
-            )
+            st.success(t("comp.corect_aprox", x=text_dat, y=q["raspuns"]))
         else:
-            st.error(f"Greșit. Ai scris: „{text_dat}”. Răspunsul corect: {q['raspuns']}.")
+            st.error(t("comp.gresit", x=text_dat, y=q["raspuns"]))
         if q.get("explicatie"):
             st.markdown(_md(q["explicatie"]))
-        st.caption(f"{q.get('unitate', 'pagina').capitalize()} {q.get('pagina', '?')}")
+        st.caption(
+            f"{unitate_sg(q.get('unitate', 'pagina'), majuscula=True)} "
+            f"{q.get('pagina', '?')}"
+        )
         ultima = i + 1 >= total
         st.button(
-            "Vezi rezultatul" if ultima else "Următoarea",
+            t("sect.vezi_rezultat") if ultima else t("sect.urmatoarea"),
             on_click=_urmatoarea,
             key="comp_next",
             use_container_width=True,
             type="primary",
         )
-    st.caption(f"Corecte până acum: {corecte} din {len(s['raspunsuri'])}")
+    st.caption(t("sect.corecte_pana_acum", c=corecte, n=len(s["raspunsuri"])))
 
 
 def _rezultate(s):
@@ -283,30 +323,32 @@ def _rezultate(s):
         salveaza_progres("comp", scor, total)
         s["progres_salvat"] = True
 
-    st.progress(1.0, text="Ai terminat")
+    st.progress(1.0, text=t("sect.terminat"))
     c1, c2 = st.columns(2)
-    c1.metric("Scor", f"{scor}/{total}")
-    c2.metric("Procent", f"{procent}%")
+    c1.metric(t("sect.scor"), f"{scor}/{total}")
+    c2.metric(t("sect.procent"), f"{procent}%")
 
     if not gresite:
-        st.success("Ai răspuns corect la toate întrebările. Bravo!")
+        st.success(t("comp.toate_corecte"))
     else:
-        st.subheader("Ce să recapitulezi")
-        grupuri = Counter(eticheta_grup(q) for _, q in gresite)
+        st.subheader(t("sect.recapitulezi"))
+        grupuri = Counter(eticheta_grup_ui(q) for _, q in gresite)
         for eticheta, nr in grupuri.most_common():
-            cuvant = "întrebare greșită" if nr == 1 else "întrebări greșite"
-            st.markdown(f"- **{eticheta}**: {nr} {cuvant}")
-        st.caption(
-            "Locurile indicate sunt cele date de model pentru fiecare întrebare. "
-            "Verifică-le în document."
-        )
-        with st.expander("Vezi întrebările greșite"):
+            cuvant = (
+                t("comp.intrebare_gresita") if nr == 1 else t("comp.intrebari_gresite")
+            )
+            st.markdown(t("sect.grup", eticheta=eticheta, n=nr, cuvant=cuvant))
+        st.caption(t("comp.nota"))
+        with st.expander(t("comp.vezi_gresite")):
             for i, q in gresite:
-                text_dat = s["raspunsuri"].get(i, ("(fără răspuns)", False, False))[0]
+                text_dat = s["raspunsuri"].get(i, ("", False, False))[0]
                 st.markdown(f"**{i + 1}. {_md(q['intrebare'])}**")
                 st.markdown(
-                    f"Răspunsul tău: {text_dat or '(fără răspuns)'}. "
-                    f"Răspuns corect: {q['raspuns']}."
+                    t(
+                        "sect.raspuns_tau_corect",
+                        x=text_dat or t("sect.fara_raspuns"),
+                        y=q["raspuns"],
+                    )
                 )
                 if q.get("explicatie"):
                     st.caption(_md(q["explicatie"]))
@@ -315,13 +357,13 @@ def _rezultate(s):
     b1, b2 = st.columns(2)
     if gresite:
         b1.button(
-            "Repetă doar întrebările greșite",
+            t("comp.repeta"),
             on_click=_repeta_gresite,
             key="comp_repeta",
             use_container_width=True,
         )
     b2.button(
-        "Început nou",
+        t("sect.nou"),
         on_click=_inceput_nou,
         key="comp_nou",
         use_container_width=True,
@@ -330,7 +372,8 @@ def _rezultate(s):
 
 def afiseaza(ctx):
     """Funcția pe care o apelează aplicația pentru această secțiune."""
-    st.caption(DESCRIERE)
+    injecteaza_stiluri()
+    st.caption(descriere_sectiune(NUME, DESCRIERE))
 
     s = st.session_state.get(CHEIE)
     if s and s["hash"] != ctx.hash_material:
