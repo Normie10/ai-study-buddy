@@ -6,22 +6,25 @@ import time
 import streamlit as st
 
 from baza_date import salveaza_progres
-from export_html import html_examen
 from explicatii import arata_corect_si_motiv
-from utile import eticheta_grup, formateaza_timp, md, sursa_text, text_intrebare
+from export_html import html_examen
+from limbi import eticheta_grup_ui, sursa_ui, t, text_intrebare_ui
+from stil_taburi import CSS_TABURI
+from utile import formateaza_timp, md
 
 
 def afiseaza_intrebare(q, i, cheie):
-    if q.get("pasaj"):
-        with st.container(border=True):
-            st.markdown(md(q["pasaj"], q))
-    st.radio(
-        md(f"{i + 1}. {text_intrebare(q)}", q),
-        q["variante"],
-        index=None,
-        key=cheie,
-        format_func=lambda v, q=q: md(v, q),
-    )
+    with st.container(border=True):
+        if q.get("pasaj"):
+            text = md(q["pasaj"], q)
+            st.markdown("\n".join("> " + linie for linie in text.split("\n")))
+        st.radio(
+            md(f"{i + 1}. {text_intrebare_ui(q)}", q),
+            q["variante"],
+            index=None,
+            key=cheie,
+            format_func=lambda v, q=q: md(v, q),
+        )
 
 
 def sterge_chei_examen(nume):
@@ -61,7 +64,7 @@ def reface_cu_greseli(nume, ex, gresite):
         "intrebari": list(gresite),
         "cerute": len(gresite),
         "durata": durata_noua,
-        "info": "Recapitulare greșeli",
+        "info": t("comun.recapitulare"),
         "context": ex["context"],
         "stare": "in_curs",
         "start": time.time(),
@@ -70,7 +73,8 @@ def reface_cu_greseli(nume, ex, gresite):
 
 @st.fragment(run_every=1)
 def cronometru(nume):
-    """Se reîncarcă singur în fiecare secundă; la 0 predă testul."""
+    """Se reîncarcă singur în fiecare secundă; la 0 predă testul. Plutește în
+    colțul din dreapta sus, ca să-l vezi oriunde ai fi în pagină."""
     ex = st.session_state.get(nume)
     if not ex or ex["stare"] != "in_curs":
         return
@@ -78,9 +82,10 @@ def cronometru(nume):
     if ramas <= 0:
         incheie_examen(nume, expirat=True)
         st.rerun()
-    st.metric("Timp rămas", formateaza_timp(ramas))
-    if ramas <= 60:
-        st.warning("Mai ai sub un minut!")
+    with st.container(key=f"cronometru_fix_{nume}"):
+        st.metric(t("ex.timp_ramas"), formateaza_timp(ramas))
+        if ramas <= 60:
+            st.warning(t("ex.sub_minut"))
 
 
 def afiseaza_rezultat(ex, nume):
@@ -95,7 +100,7 @@ def afiseaza_rezultat(ex, nume):
         ok = ales == q["variante"][q["corect"]]
         if ok:
             scor += 1
-        stat = grupuri.setdefault(eticheta_grup(q), [0, 0])
+        stat = grupuri.setdefault(eticheta_grup_ui(q), [0, 0])
         stat[0] += 1
         if not ok:
             stat[1] += 1
@@ -112,65 +117,60 @@ def afiseaza_rezultat(ex, nume):
     este_sat = ex.get("sursa") == "sat"
 
     if ex.get("expirat"):
-        st.warning("Timpul a expirat. Întrebările fără răspuns au fost socotite greșite.")
+        st.warning(t("ex.expirat"))
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("Scor", f"{scor}/{total}")
-    c2.metric("Procent", f"{procent}%")
-    c3.metric("Timp folosit", formateaza_timp(folosit))
+    c1.metric(t("ex.scor"), f"{scor}/{total}")
+    c2.metric(t("ex.procent"), f"{procent}%")
+    c3.metric(t("ex.timp_folosit"), formateaza_timp(folosit))
+    st.progress(scor / total)
     if fara_raspuns:
-        st.caption(f"Ai lăsat {fara_raspuns} întrebări fără răspuns.")
+        st.caption(t("ex.fara_raspuns", n=fara_raspuns))
 
-    st.subheader("Ce să recapitulezi")
+    st.subheader(t("ex.recapitulezi"))
     de_recapitulat = sorted(
-        [(eticheta, t, g) for eticheta, (t, g) in grupuri.items() if g > 0],
+        [(eticheta, tot, g) for eticheta, (tot, g) in grupuri.items() if g > 0],
         key=lambda x: (-x[2], -x[2] / x[1]),
     )
     if not de_recapitulat:
-        st.success("Ai răspuns corect la toate întrebările. Bravo!")
+        st.success(t("ex.toate_corecte"))
     else:
-        for eticheta, t, g in de_recapitulat:
-            cuvinte = "întrebare greșită" if t == 1 else "întrebări greșite"
-            st.markdown(f"- **{eticheta}**: {g} din {t} {cuvinte}")
-        if este_sat:
-            st.caption("Temele sunt cele atribuite de model fiecărei întrebări.")
-        else:
-            st.caption(
-                "Locurile indicate sunt cele date de model pentru fiecare întrebare. "
-                "Verifică-le în document."
+        for eticheta, tot, g in de_recapitulat:
+            cuvant = (
+                t("ex.intrebare_gresita") if tot == 1 else t("ex.intrebari_gresite")
             )
+            st.markdown(
+                t("ex.grup", eticheta=eticheta, g=g, tot=tot, cuvant=cuvant)
+            )
+        st.caption(t("ex.nota_sat") if este_sat else t("ex.nota_doc"))
     if este_sat:
-        st.caption(
-            "Întrebările sunt scrise de AI și pot conține greșeli. Scorul nu este "
-            "scorul oficial SAT."
-        )
+        st.caption(t("ex.nota_sat_oficial"))
 
     gresite_intrebari = [q for _, q, _, ok in detalii if not ok]
     if gresite_intrebari:
         st.button(
-            f"Recapitulează doar greșelile ({len(gresite_intrebari)})",
+            t("ex.recap_buton", n=len(gresite_intrebari)),
             on_click=reface_cu_greseli,
             args=(nume, ex, gresite_intrebari),
             key=f"recap_{nume}",
             type="primary",
         )
 
-    with st.expander("Vezi toate întrebările și răspunsurile"):
+    with st.expander(t("ex.vezi_toate")):
         for i, q, ales, ok in detalii:
-            stare = "Corect" if ok else "Greșit"
+            stare = t("ex.corect") if ok else t("ex.gresit")
             if q.get("pasaj"):
                 st.markdown(md(q["pasaj"], q))
-            st.markdown(f"**{i + 1}. {md(text_intrebare(q), q)}**")
-            st.markdown(
-                f"{stare}. Răspunsul tău: {md(ales, q) if ales else 'fără răspuns'}"
-            )
+            st.markdown(f"**{i + 1}. {md(text_intrebare_ui(q), q)}**")
+            raspuns_tau = md(ales, q) if ales else t("ex.fara_raspuns_text")
+            st.markdown(f"{stare}. {t('ex.raspunsul_tau', r=raspuns_tau)}")
             if not ok:
-               arata_corect_si_motiv(q, ales)
-            st.caption(f"{md(q['explicatie'], q)} ({sursa_text(q)})")
+                arata_corect_si_motiv(q, ales)
+            st.caption(f"{md(q['explicatie'], q)} ({sursa_ui(q)})")
             st.divider()
 
     st.download_button(
-        "Descarcă rezultatele pentru printat (.html)",
+        t("ex.descarca"),
         data=html_examen(
             ex.get("titlu", "Rezultate examen"),
             scor,
@@ -186,7 +186,7 @@ def afiseaza_rezultat(ex, nume):
         on_click="ignore",
         key=f"dl_{nume}",
     )
-    st.button("Examen nou", on_click=examen_nou, args=(nume,), key=f"nou_{nume}")
+    st.button(t("ex.nou"), on_click=examen_nou, args=(nume,), key=f"nou_{nume}")
 
 
 def afiseaza_examen(nume, context, formular):
@@ -194,6 +194,8 @@ def afiseaza_examen(nume, context, formular):
     `context` identifică materialul; dacă se schimbă, testul se resetează.
     `formular()` desenează setările și, când se apasă Începe, întoarce un
     dicționar cu testul (altfel None)."""
+    st.markdown(CSS_TABURI, unsafe_allow_html=True)
+
     ex = st.session_state.get(nume)
     if ex and ex["context"] != context:
         sterge_chei_examen(nume)
@@ -216,19 +218,17 @@ def afiseaza_examen(nume, context, formular):
             st.rerun()
 
         cronometru(nume)
-        st.caption(f"Model: {ex['info']}")
+        st.caption(t("comun.model", info=ex["info"]))
         if len(ex["intrebari"]) < ex["cerute"]:
-            st.info(
-                f"Am găsit doar {len(ex['intrebari'])} întrebări distincte, "
-                "așa că testul are mai puține decât ai cerut."
-            )
+            st.info(t("ex.mai_putine", n=len(ex["intrebari"])))
         for i, q in enumerate(ex["intrebari"]):
             afiseaza_intrebare(q, i, f"{nume}_r{i}")
         st.button(
-            "Predă examenul",
+            t("ex.preda"),
             on_click=incheie_examen,
             args=(nume,),
             key=f"preda_{nume}",
+            type="primary",
         )
 
     else:  # terminat
