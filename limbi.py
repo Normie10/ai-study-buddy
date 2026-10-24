@@ -379,3 +379,8 @@ def text_intrebare_ui(q):
     if q.get("tip_intrebare") == "af":
         return t("af.prefix", intrebare=q["intrebare"])
     return q["intrebare"]
+
+# ------------------------- texte pentru secțiunile din sectiuni/ -------------------------
+from texte_sectiuni import TEXTE_SECTIUNI  # noqa: E402
+
+TEXTE.update(TEXTE_SECTIUNI)
