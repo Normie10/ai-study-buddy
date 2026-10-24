@@ -11,7 +11,7 @@ from baza_date import _client, utilizator_curent
 # Limbile oferite utilizatorilor. Cât timp traducerea nu e gata în toate
 # fișierele, lasă doar ("ro",): selectorul de limbă nu apare, iar aplicația
 # rămâne în română. Pentru a testa engleza, pune ("ro", "en").
-LIMBI_DISPONIBILE = ("ro",)
+LIMBI_DISPONIBILE = ("ro", "en")
 NUME_LIMBA = {"ro": "Română", "en": "English"}
 
 
