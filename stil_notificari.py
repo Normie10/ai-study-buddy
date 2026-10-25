@@ -4,10 +4,10 @@ salvare plutesc pe ecran, oriunde ai fi dat scroll în pagină."""
 CSS_NOTIFICARI = """
 <style>
 /* ---------- Notificare de încărcare (rotița din st.spinner) ----------
-   Plutește sus, la mijloc, și rămâne vizibilă la scroll. Rotița se învârte. */
+   Plutește sus, la mijloc, și rămâne vizibilă la scroll. */
 [data-testid="stSpinner"] {
     position: fixed;
-    top: 1rem;
+    top: 4rem;
     left: 0;
     right: 0;
     margin: 0 auto;
@@ -26,47 +26,5 @@ CSS_NOTIFICARI = """
     font-weight: 600;
     pointer-events: none;
 }
-/* Rotirea rotiței (Streamlit o definește singur; o forțăm explicit, ca să
-   nu fie oprită de alte reguli). Funcționează pe varianta SVG sau pe cea
-   cu bordură. */
-[data-testid="stSpinner"] svg,
-[data-testid="stSpinner"] [class*="Spinner"],
-[data-testid="stSpinner"] i {
-    animation: rotita-invartire 0.9s linear infinite !important;
-}
-@keyframes rotita-invartire {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-    [data-testid="stSpinner"] svg,
-    [data-testid="stSpinner"] [class*="Spinner"],
-    [data-testid="stSpinner"] i {
-        animation: rotita-invartire 2.5s linear infinite !important;
-    }
-}
-
-/* ---------- Avertisment de salvare (bannerul galben) ----------
-   Plutește jos, la mijloc, până apeși „Am înțeles”. */
-div[class*="st-key-avert_salvare"] {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 1.25rem;
-    margin: 0 auto;
-    width: min(560px, calc(100vw - 2rem));
-    max-height: 60vh;
-    overflow-y: auto;
-    z-index: 1000000;
-}
-/* Fundalul și bordura apar doar când există un avertisment în el */
-div[class*="st-key-avert_salvare"]:has([data-testid="stAlert"]) {
-    padding: 0.75rem;
-    background: #16161A;
-    border: 1px solid #3C3C45;
-    border-radius: 14px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
-    animation: aparitie 0.25s ease both;
-}
-</style>
-"""
+/* Rotița lui Streamlit (primul element din notificare) o ascundem și o
+   înlocuim cu un inel prop
