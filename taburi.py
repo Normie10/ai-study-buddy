@@ -33,7 +33,7 @@ from generare import (
     genereaza_teanc_sat,
     raspunde_intrebare,
 )
-from limbi import descriere_sectiune, sursa_ui, t, text_intrebare_ui, unitate_sg
+from limbi import descriere_sectiune, sursa_ui, t, text_intrebare_ui, unitate_sg, varianta_ui
 from memorie import (
     amesteca_variante,
     citeste,
@@ -215,7 +215,7 @@ def tab_quiz(ctx):
                     f"{i + 1}. {text_intrebare_ui(q)}",
                     q["variante"],
                     index=None,
-                    key=f"q{i}",
+                    key=f"q{i}", format_func=lambda v, q=q: varianta_ui(v, q),
                     disabled=predat is not None,  # după predare, răspunsurile se blochează
                 )
                 if predat is not None:
