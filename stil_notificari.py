@@ -26,19 +26,25 @@ CSS_NOTIFICARI = """
     font-weight: 600;
     pointer-events: none;
 }
-/* Rotița originală a lui Streamlit se ascunde (orice copil fără text)... */
-[data-testid="stSpinner"] > *:not(:has(p)):not(p) {
+/* Rotița originală a lui Streamlit: ascunsă. Ținta sunt elementele care nu
+   conțin text (svg, i și div-uri goale), la orice adâncime. */
+[data-testid="stSpinner"] svg,
+[data-testid="stSpinner"] i,
+[data-testid="stSpinner"] > div:empty,
+[data-testid="stSpinner"] > span:empty,
+[data-testid="stSpinner"] [class*="pinner"]:empty,
+[data-testid="stSpinner"] > *:first-child:not(:has(p)):not(p):not(:only-child) {
     display: none !important;
 }
-/* ...iar în locul ei desenăm una proprie, care se învârte. */
+/* Rotița proprie, albă, care se învârte. */
 [data-testid="stSpinner"]::before {
     content: "";
     flex-shrink: 0;
     width: 18px;
     height: 18px;
     box-sizing: border-box;
-    border: 2.5px solid rgba(255, 255, 255, 0.18);
-    border-top-color: #E5383B;
+    border: 2.5px solid rgba(255, 255, 255, 0.25);
+    border-top-color: #FFFFFF;
     border-radius: 50%;
     animation: rotita-invartire 0.8s linear infinite;
 }
