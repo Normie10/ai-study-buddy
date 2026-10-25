@@ -405,3 +405,6 @@ def varianta_ui(v, q):
     return v
 
 from limbi_continut import varianta_ui, text_intrebare_ui
+
+from texte_export import TEXTE_EXPORT
+TEXTE.update(TEXTE_EXPORT)
