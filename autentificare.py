@@ -16,15 +16,17 @@ from limbi import selector_limba, t
 
 
 def _antet():
-    """Antetul comun: marca roșie + numele aplicației. HTML-ul rămâne pe UN
-    SINGUR rând, fără linii goale, altfel Markdown îl strică."""
+    """Antetul comun: marca roșie + numele aplicației, apoi selectorul de
+    limbă. HTML-ul rămâne pe UN SINGUR rând, fără linii goale, altfel
+    Markdown îl strică."""
     html_antet = (
         '<div class="hero"><div class="hero-marca"></div><div>'
         '<div class="hero-titlu">AI Study Buddy</div>'
         '<div class="hero-sub">' + t("auth_hero_sub") + "</div>"
         "</div></div>"
     )
-    st.markdown(html_antet, unsafe_allow_html=True)     selector_limba()
+    st.markdown(html_antet, unsafe_allow_html=True)
+    selector_limba()
 
 
 def ecran_autentificare():
