@@ -14,9 +14,9 @@ import streamlit as st
 from config import (
     MAX_CARACTERE,
     NR_FRAGMENTE_INTREBARE,
-    PLURAL,
     TINTA_SECTIUNE,
 )
+from limbi import t, unitate_ui
 from utile import fmt
 
 
@@ -51,7 +51,7 @@ def imparte_text(text, tinta=TINTA_SECTIUNE):
             curent = f"{curent}\n\n{b}" if curent else b
     if curent:
         sectiuni.append(curent)
-    return [{"pagina": i, "text": t} for i, t in enumerate(sectiuni, start=1)]
+    return [{"pagina": i, "text": bucata} for i, bucata in enumerate(sectiuni, start=1)]
 
 
 def citeste_txt(octeti):
@@ -85,9 +85,9 @@ def _capitole(doc):
     """Capitolele din cuprinsul PDF-ului (dacă există): titlu + interval de pagini."""
     try:
         toc = [
-            (lv, t.strip(), p)
-            for lv, t, p in doc.get_toc()
-            if lv <= 2 and t.strip() and 1 <= p <= len(doc)
+            (lv, titlu_c.strip(), p)
+            for lv, titlu_c, p in doc.get_toc()
+            if lv <= 2 and titlu_c.strip() and 1 <= p <= len(doc)
         ]
     except Exception:
         return []
@@ -104,7 +104,9 @@ def _capitole(doc):
     return rezultat
 
 
-@st.cache_data(show_spinner="Citesc documentul...", max_entries=5)
+# Rotița de încărcare se pune în material_din_fisier (acolo se poate traduce);
+# funcția cu cache nu poate depinde de limba aleasă.
+@st.cache_data(show_spinner=False, max_entries=5)
 def incarca_fisier(hash_fisier, extensie, _octeti):
     capitole = []
     if extensie == "pdf":
@@ -126,7 +128,8 @@ def material_din_fisier(fisier):
     octeti = fisier.getvalue()
     extensie = fisier.name.rsplit(".", 1)[-1].lower()
     hash_fisier = hashlib.sha256(octeti).hexdigest()
-    date = incarca_fisier(hash_fisier, extensie, octeti)
+    with st.spinner(t("doc.citesc")):
+        date = incarca_fisier(hash_fisier, extensie, octeti)
     return {**date, "hash": hash_fisier, "nume": fisier.name}
 
 
@@ -169,7 +172,7 @@ def alege_interval(mat):
     sau (None, None) dacă partea aleasă nu are text."""
     unitati = mat["unitati"]
     n = len(unitati)
-    plural = PLURAL[mat["eticheta"]]
+    plural = unitate_ui(mat["eticheta"])
     total_car = sum(len(u["text"]) for u in unitati)
     incape = total_car <= MAX_CARACTERE
     start, end = 1, n
@@ -180,51 +183,48 @@ def alege_interval(mat):
             prima = taie_la_buget(unitati, 1, n)
             st.session_state[cheie] = (1, max(1, len(prima)))
 
-        with st.expander("Ce parte din document folosesc?", expanded=not incape):
+        with st.expander(t("doc.expander"), expanded=not incape):
             if incape:
-                st.caption(
-                    "Tot documentul încape într-o singură generare. "
-                    "Poți totuși să alegi doar o parte."
-                )
+                st.caption(t("doc.incape"))
             else:
                 st.warning(
-                    f"Documentul are aproximativ {fmt(total_car)} de caractere, "
-                    "prea mult pentru o singură generare. Alege o parte (maximum "
-                    f"{fmt(MAX_CARACTERE)} de caractere odată). Secțiunea „Întreabă” "
-                    "caută oricum în tot documentul."
+                    t("doc.prea_mult", total=fmt(total_car), max=fmt(MAX_CARACTERE))
                 )
             if mat["capitole"]:
                 caps = mat["capitole"]
                 cheie_cap = f"cap_{mat['hash']}"
                 st.selectbox(
-                    "Sari la un capitol (din cuprinsul documentului)",
+                    t("doc.sari_cap"),
                     range(len(caps)),
                     index=None,
                     format_func=lambda i: caps[i]["titlu"],
                     key=cheie_cap,
-                    placeholder="Alege un capitol (opțional)",
+                    placeholder=t("doc.alege_cap"),
                     on_change=sari_la_capitol,
                     args=(cheie, cheie_cap, caps),
                 )
-            start, end = st.slider(f"Interval ({plural})", 1, n, key=cheie)
+            start, end = st.slider(t("doc.interval", unitate=plural), 1, n, key=cheie)
 
     selectate = taie_la_buget(unitati, start, end)
     caractere = sum(len(u["text"]) for u in selectate)
     if sum(len(u["text"].strip()) for u in selectate) < 50:
-        st.error(f"În {plural} {start}-{end} nu am găsit text. Alege alt interval.")
+        st.error(t("doc.fara_text_interval", unitate=plural, start=start, end=end))
         return None, None
 
     ultimul = selectate[-1]["pagina"]
     if ultimul < end:
         st.warning(
-            f"Intervalul ales e prea mare pentru o singură generare, așa că folosesc "
-            f"doar {plural} {start}-{ultimul}. Alege un interval mai mic ca să "
-            "acoperi și restul."
+            t("doc.prea_mare", unitate=plural, start=start, ultimul=ultimul)
         )
     elif n > 1:
         st.caption(
-            f"Pentru quiz, examen, flashcarduri și rezumat folosesc {plural} "
-            f"{start}-{end} (aprox. {fmt(caractere)} de caractere)."
+            t(
+                "doc.folosesc",
+                unitate=plural,
+                start=start,
+                end=end,
+                car=fmt(caractere),
+            )
         )
 
     hash_material = hashlib.sha256(
@@ -247,16 +247,16 @@ STOP_CUVINTE = {
 }
 
 
-def _fara_diacritice(t):
-    t = unicodedata.normalize("NFD", t.lower())
-    return "".join(c for c in t if unicodedata.category(c) != "Mn")
+def _fara_diacritice(text):
+    text = unicodedata.normalize("NFD", text.lower())
+    return "".join(c for c in text if unicodedata.category(c) != "Mn")
 
 
-def cuvinte_cheie(t):
+def cuvinte_cheie(text):
     """Cuvinte fără diacritice, tăiate la 6 litere (ca "cloroplast" și
     "cloroplaste" să se potrivească)."""
     rezultat = []
-    for w in re.findall(r"[a-z0-9]{3,}", _fara_diacritice(t)):
+    for w in re.findall(r"[a-z0-9]{3,}", _fara_diacritice(text)):
         if w not in STOP_CUVINTE:
             rezultat.append(w[:6])
     return rezultat
@@ -325,4 +325,4 @@ def descrie_surse(fragmente, eticheta):
     nr = [str(u["pagina"]) for u in fragmente]
     if len(nr) > 15:
         nr = nr[:15] + ["..."]
-    return f"Am căutat în {PLURAL[eticheta]}: " + ", ".join(nr)
+    return t("doc.cautat", unitate=unitate_ui(eticheta), lista=", ".join(nr))
