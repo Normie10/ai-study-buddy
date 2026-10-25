@@ -16,6 +16,7 @@ from baza_date import salveaza_progres
 from export_html import html_quiz
 from generare import genereaza_teanc_af
 from limbi import descriere_sectiune, eticheta_grup_ui, t, unitate_sg
+from limbi_continut import varianta_ui
 from memorie import preia_din_teanc
 from stil_sectiuni import injecteaza_stiluri
 
@@ -40,9 +41,10 @@ def _html(text):
     return html.escape(str(text)).replace("$", "&#36;").replace("\n", "<br>")
 
 
-def _var(idx):
-    """Numele variantei (0 = Adevărat, 1 = Fals), în limba interfeței."""
-    return t("af.adevarat") if idx == 0 else t("af.fals")
+def _var(idx, q):
+    """Numele variantei (0 = Adevărat, 1 = Fals), în limba ÎNTREBĂRII
+    (nu a interfeței): Adevărat / Fals sau True / False etc."""
+    return varianta_ui(q["variante"][idx], q)
 
 
 def _porneste(intrebari, info, hash_material):
@@ -148,14 +150,14 @@ def _intrebare(s):
     if raspuns is None:
         b1, b2 = st.columns(2)
         b1.button(
-            t("af.adevarat"),
+            _var(0, q),
             on_click=_raspunde,
             args=(0,),
             key="afs_adev",
             use_container_width=True,
         )
         b2.button(
-            t("af.fals"),
+            _var(1, q),
             on_click=_raspunde,
             args=(1,),
             key="afs_fals",
@@ -165,7 +167,7 @@ def _intrebare(s):
         if raspuns == q["corect"]:
             st.success(t("af.corect"))
         else:
-            st.error(t("af.gresit", r=_var(q["corect"])))
+            st.error(t("af.gresit", r=_var(q["corect"], q)))
         if q.get("explicatie"):
             st.markdown(_md(q["explicatie"]))
         st.caption(
@@ -214,10 +216,16 @@ def _rezultate(s):
         with st.expander(t("af.vezi_gresite")):
             for i, q in gresite:
                 ales = s["raspunsuri"].get(i)
-                ales_text = _var(ales) if ales is not None else t("sect.fara_raspuns")
+                ales_text = (
+                    _var(ales, q) if ales is not None else t("sect.fara_raspuns")
+                )
                 st.markdown(f"**{i + 1}. {_md(q['intrebare'])}**")
                 st.markdown(
-                    t("sect.raspuns_tau_corect", x=ales_text, y=_var(q["corect"]))
+                    t(
+                        "sect.raspuns_tau_corect",
+                        x=ales_text,
+                        y=_var(q["corect"], q),
+                    )
                 )
                 if q.get("explicatie"):
                     st.caption(_md(q["explicatie"]))
