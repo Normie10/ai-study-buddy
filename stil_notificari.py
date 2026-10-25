@@ -26,14 +26,10 @@ CSS_NOTIFICARI = """
     font-weight: 600;
     pointer-events: none;
 }
-/* Rotița originală a lui Streamlit: ascunsă. Ținta sunt elementele care nu
-   conțin text (svg, i și div-uri goale), la orice adâncime. */
-[data-testid="stSpinner"] svg,
-[data-testid="stSpinner"] i,
-[data-testid="stSpinner"] > div:empty,
-[data-testid="stSpinner"] > span:empty,
-[data-testid="stSpinner"] [class*="pinner"]:empty,
-[data-testid="stSpinner"] > *:first-child:not(:has(p)):not(p):not(:only-child) {
+/* Rotița originală a lui Streamlit: ascundem orice element din notificare
+   care nu conține text (nici el, nici ceva din el nu e un paragraf) și nu
+   e în interiorul unui paragraf. Textul rămâne. */
+[data-testid="stSpinner"] :not(:has(p)):not(p):not(p *):not(style) {
     display: none !important;
 }
 /* Rotița proprie, albă, care se învârte. */
