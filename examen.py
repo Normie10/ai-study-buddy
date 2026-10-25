@@ -8,7 +8,7 @@ import streamlit as st
 from baza_date import salveaza_progres
 from explicatii import arata_corect_si_motiv
 from export_html import html_examen
-from limbi import eticheta_grup_ui, sursa_ui, t, text_intrebare_ui
+from limbi import eticheta_grup_ui, sursa_ui, t, text_intrebare_ui, varianta_ui
 from stil_taburi import CSS_TABURI
 from utile import formateaza_timp, md
 
@@ -23,7 +23,7 @@ def afiseaza_intrebare(q, i, cheie):
             q["variante"],
             index=None,
             key=cheie,
-            format_func=lambda v, q=q: md(v, q),
+            format_func=lambda v, q=q: md(varianta_ui(v, q), q),
         )
 
 
@@ -162,7 +162,7 @@ def afiseaza_rezultat(ex, nume):
             if q.get("pasaj"):
                 st.markdown(md(q["pasaj"], q))
             st.markdown(f"**{i + 1}. {md(text_intrebare_ui(q), q)}**")
-            raspuns_tau = md(ales, q) if ales else t("ex.fara_raspuns_text")
+            raspuns_tau = md(varianta_ui(ales, q), q) if ales else t("ex.fara_raspuns_text")
             st.markdown(f"{stare}. {t('ex.raspunsul_tau', r=raspuns_tau)}")
             if not ok:
                 arata_corect_si_motiv(q, ales)
