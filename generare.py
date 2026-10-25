@@ -191,7 +191,7 @@ Reguli:
 TEXT:
 {text_din_unitati(unitati, eticheta)}"""
     return cere_model(
-        client, prompt, lambda t: valideaza_af(_parse_json(t), eticheta)
+        client, prompt, lambda t: [dict(a, limba=limba) for a in valideaza_af(_parse_json(t), eticheta)]
     )
 
 
