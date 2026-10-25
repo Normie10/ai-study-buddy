@@ -4,11 +4,10 @@ salvare plutesc pe ecran, oriunde ai fi dat scroll în pagină."""
 CSS_NOTIFICARI = """
 <style>
 /* ---------- Notificare de încărcare (rotița din st.spinner) ----------
-   Plutește sus, la mijloc, și rămâne vizibilă la scroll. Rotița e statică
-   (nu se învârte). Ca să se învârtă din nou, șterge regula marcată mai jos. */
+   Plutește sus, la mijloc, și rămâne vizibilă la scroll. Rotița se învârte. */
 [data-testid="stSpinner"] {
     position: fixed;
-    top: 4rem;
+    top: 1rem;
     left: 0;
     right: 0;
     margin: 0 auto;
@@ -26,11 +25,25 @@ CSS_NOTIFICARI = """
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
     font-weight: 600;
     pointer-events: none;
-    animation: aparitie 0.25s ease both;
 }
-/* regula care oprește rotirea: șterge-o dacă vrei rotița să se învârtă */
-[data-testid="stSpinner"] * {
-    animation: none !important;
+/* Rotirea rotiței (Streamlit o definește singur; o forțăm explicit, ca să
+   nu fie oprită de alte reguli). Funcționează pe varianta SVG sau pe cea
+   cu bordură. */
+[data-testid="stSpinner"] svg,
+[data-testid="stSpinner"] [class*="Spinner"],
+[data-testid="stSpinner"] i {
+    animation: rotita-invartire 0.9s linear infinite !important;
+}
+@keyframes rotita-invartire {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+    [data-testid="stSpinner"] svg,
+    [data-testid="stSpinner"] [class*="Spinner"],
+    [data-testid="stSpinner"] i {
+        animation: rotita-invartire 2.5s linear infinite !important;
+    }
 }
 
 /* ---------- Avertisment de salvare (bannerul galben) ----------
