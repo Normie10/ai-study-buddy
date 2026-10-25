@@ -15,6 +15,62 @@ from baza_date import (
 from limbi import selector_limba, t
 
 
+# ------------------------- mesaje de eroare -------------------------
+# (cheia mesajului, fragmente căutate în textul sau codul erorii). Ordinea
+# contează: prima potrivire câștigă.
+_CATEGORII = [
+    ("auth_err_neconfirmat", ("email not confirmed", "email_not_confirmed")),
+    ("auth_err_credentiale", ("invalid login credentials", "invalid_credentials")),
+    (
+        "auth_err_existent",
+        ("already registered", "already been registered", "user_already_exists",
+         "email_exists"),
+    ),
+    ("auth_err_parola_aceeasi", ("different from the old", "same_password")),
+    ("auth_err_parola_slaba", ("password should be", "weak_password", "at least 6")),
+    (
+        "auth_err_email_invalid",
+        ("invalid email", "email_address_invalid", "unable to validate email",
+         "validate email"),
+    ),
+    (
+        "auth_err_limita",
+        ("rate limit", "rate_limit", "too many", "over_request_rate_limit",
+         "over_email_send_rate_limit", "429"),
+    ),
+    (
+        "auth_err_retea",
+        ("connection", "timed out", "timeout", "network", "name resolution",
+         "getaddrinfo", "unreachable", "502", "503", "504"),
+    ),
+]
+
+
+def _cheie_eroare(exceptie):
+    """Alege mesajul potrivit după textul și codul erorii. Ce nu recunoaște
+    ajunge la mesajul general."""
+    cod = str(getattr(exceptie, "code", "") or "")
+    text = f"{cod} {exceptie}".lower()
+    for cheie, fragmente in _CATEGORII:
+        if any(f in text for f in fragmente):
+            return cheie
+    nume_tip = type(exceptie).__name__.lower()
+    if any(x in nume_tip for x in ("connect", "timeout", "network")):
+        return "auth_err_retea"
+    return "auth_err_necunoscut"
+
+
+def arata_eroare_auth(exceptie):
+    """Mesajul tradus, plus detaliul tehnic (mic, gri) la erorile de rețea
+    sau necunoscute, ca să le putem descoperi în timpul testelor."""
+    cheie = _cheie_eroare(exceptie)
+    st.error(t(cheie))
+    if cheie in ("auth_err_necunoscut", "auth_err_retea"):
+        detaliu = str(exceptie).strip()[:200] or type(exceptie).__name__
+        st.caption(t("avert.detalii", motiv=detaliu))
+
+
+# ------------------------- ecrane -------------------------
 def _antet():
     """Antetul comun: marca roșie + numele aplicației, apoi selectorul de
     limbă. HTML-ul rămâne pe UN SINGUR rând, fără linii goale, altfel
@@ -56,8 +112,8 @@ def ecran_autentificare():
                 try:
                     autentifica(email, parola)
                     st.rerun()
-                except Exception:
-                    st.error(t("auth_login_gresit"))
+                except Exception as e_login:
+                    arata_eroare_auth(e_login)
 
         if st.button(t("auth_uitat"), key="link_resetare"):
             st.session_state["arata_resetare"] = True
@@ -88,7 +144,7 @@ def ecran_autentificare():
                     else:
                         st.rerun()
                 except Exception as e_reg:
-                    st.error(t("auth_eroare_cont", eroare=e_reg))
+                    arata_eroare_auth(e_reg)
 
     st.divider()
     st.caption(t("auth_vizitator_info"))
@@ -111,7 +167,7 @@ def _formular_cerere_resetare():
                 trimite_email_resetare(email)
                 st.success(t("auth_reset_ok"))
             except Exception as e_reset:
-                st.error(t("auth_reset_eroare", eroare=e_reset))
+                arata_eroare_auth(e_reset)
 
     if st.button(t("auth_inapoi_login"), key="inapoi_login"):
         st.session_state.pop("arata_resetare", None)
@@ -167,4 +223,4 @@ def ecran_parola_noua(access_token, refresh_token):
                 st.session_state["parola_schimbata"] = True
                 st.rerun()
             except Exception as e_pn:
-                st.error(t("auth_pn_eroare", eroare=e_pn))
+                arata_eroare_auth(e_pn)
