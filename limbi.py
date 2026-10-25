@@ -408,3 +408,6 @@ from limbi_continut import varianta_ui, text_intrebare_ui
 
 from texte_export import TEXTE_EXPORT
 TEXTE.update(TEXTE_EXPORT)
+
+from texte_erori_auth import TEXTE_ERORI_AUTH
+TEXTE.update(TEXTE_ERORI_AUTH)
