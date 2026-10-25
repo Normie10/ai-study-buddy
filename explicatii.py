@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from limbi import t
+from limbi import t, varianta_ui
 from utile import md
 
 
@@ -25,11 +25,13 @@ def arata_motiv_greseala(q, ales):
 
 def arata_corect_si_motiv(q, ales):
     """Folosită în rezultatele examenului."""
-    st.markdown(t("expl.corect", r=md(q["variante"][q["corect"]], q)))
+    corect_ui = varianta_ui(q["variante"][q["corect"]], q)
+    st.markdown(t("expl.corect", r=md(corect_ui, q)))
     arata_motiv_greseala(q, ales)
 
 
 def arata_greseala_quiz(i, q, corect, ales):
-    """Folosită în Quiz, după predare."""
-    st.error(t("expl.gresit_quiz", i=i + 1, corect=corect))
+    """Folosită în Quiz, după predare. `corect` e valoarea internă; doar
+    afișarea se traduce."""
+    st.error(t("expl.gresit_quiz", i=i + 1, corect=varianta_ui(corect, q)))
     arata_motiv_greseala(q, ales)
