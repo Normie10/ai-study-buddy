@@ -16,7 +16,7 @@ from config import (
     PLURAL,
     TEME_SAT,
 )
-from utile import norm, text_din_unitati
+from limbi import t as t_ui; from utile import norm, text_din_unitati
 
 
 # ------------------------- apel către model -------------------------
@@ -38,8 +38,8 @@ def cere_model(client, prompt, prelucrare):
             continue  # încearcă următorul model
 
     raise RuntimeError(
-        "Toate modelele sunt indisponibile acum. Încearcă din nou peste "
-        f"câteva minute. Ultima eroare: {ultima_eroare}"
+                t_ui("gen.indisponibile") + " "
+        + t_ui("gen.ultima_eroare", e=ultima_eroare)
     )
 
 
