@@ -403,3 +403,5 @@ def varianta_ui(v, q):
         if v == "Fals":
             return t("af.fals")
     return v
+
+from limbi_continut import varianta_ui, text_intrebare_ui
