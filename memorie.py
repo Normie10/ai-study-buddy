@@ -8,6 +8,7 @@ import uuid
 import streamlit as st
 
 from config import MAX_DOCUMENTE_IN_MEMORIE
+from limbi import t
 from utile import norm
 
 
@@ -86,22 +87,19 @@ def preia_din_teanc(cheie, nr, camp, genereaza):
     vazute = st.session_state.setdefault("vazute", {}).setdefault(cheie_proprie, set())
     nevazute = [i for i in range(len(teanc["elemente"])) if i not in vazute]
 
-    nota = "din memorie, fără cerere nouă la Google"
+    nota = t("mem.din_memorie")
     if len(nevazute) < nr:
         try:
             _completeaza_teanc(teanc, genereaza, camp)
-            nota = "cerere nouă la Google"
+            nota = t("mem.cerere_noua")
         except Exception:
             if not teanc["elemente"]:
                 raise  # nu avem nimic din memorie, arătăm eroarea
-            nota = (
-                "Google e aglomerat sau limita e atinsă, "
-                "așa că am refolosit elemente din memorie"
-            )
+            nota = t("mem.aglomerat_quiz")
 
     alese, repetate = _alege_din_teanc(cheie_proprie, teanc, nr)
     if repetate:
-        nota += " (unele se pot repeta)"
+        nota += " " + t("mem.repetari")
     return alese, teanc["model"], nota
 
 
@@ -111,19 +109,16 @@ def preia_pentru_examen(cheie, nr, camp, genereaza):
     cheie_proprie = cheie + (_id_sesiune(),)
     teanc = _ia_teanc(cheie_proprie)
 
-    nota = "din memorie, fără cerere nouă la Google"
+    nota = t("mem.din_memorie")
     if len(teanc["elemente"]) < nr and teanc.get("max_cerut", 0) < nr:
         try:
             _completeaza_teanc(teanc, genereaza, camp)
             teanc["max_cerut"] = nr
-            nota = "cerere nouă la Google"
+            nota = t("mem.cerere_noua")
         except Exception:
             if not teanc["elemente"]:
                 raise
-            nota = (
-                "Google e aglomerat sau limita e atinsă, "
-                "așa că am folosit întrebările din memorie"
-            )
+            nota = t("mem.aglomerat_examen")
 
     alese, _ = _alege_din_teanc(cheie_proprie, teanc, nr)
     return alese, teanc["model"], nota
