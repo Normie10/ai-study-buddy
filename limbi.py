@@ -411,3 +411,15 @@ TEXTE.update(TEXTE_EXPORT)
 
 from texte_erori_auth import TEXTE_ERORI_AUTH
 TEXTE.update(TEXTE_ERORI_AUTH)
+
+TEXTE.update(
+    {
+        "gen.indisponibile": (
+            "Toate modelele sunt indisponibile acum. Încearcă din nou peste "
+            "câteva minute.",
+            "All the models are unavailable right now. Try again in a few "
+            "minutes.",
+        ),
+        "gen.ultima_eroare": ("Ultima eroare: {e}", "Last error: {e}"),
+    }
+)
