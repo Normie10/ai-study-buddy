@@ -390,3 +390,6 @@ TEXTE.update(TEXTE_AUTENTIFICARE)
 
 from texte_abonamente import TEXTE_ABONAMENTE
 TEXTE.update(TEXTE_ABONAMENTE)
+
+from texte_documente import TEXTE_DOCUMENTE
+TEXTE.update(TEXTE_DOCUMENTE)
