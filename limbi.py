@@ -393,3 +393,13 @@ TEXTE.update(TEXTE_ABONAMENTE)
 
 from texte_documente import TEXTE_DOCUMENTE
 TEXTE.update(TEXTE_DOCUMENTE)
+
+def varianta_ui(v, q):
+    """Textul afișat pentru o variantă de răspuns. La Adevărat/Fals, valorile
+    interne rămân „Adevărat” și „Fals”; doar afișarea se traduce."""
+    if q.get("tip_intrebare") == "af":
+        if v == "Adevărat":
+            return t("af.adevarat")
+        if v == "Fals":
+            return t("af.fals")
+    return v
