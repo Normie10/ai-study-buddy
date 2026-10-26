@@ -32,7 +32,7 @@ import streamlit as st
 from streamlit_javascript import st_javascript
 
 # Trebuie să fie prima comandă Streamlit din script
-st.set_page_config(page_title="AI Study Buddy", layout="centered")
+st.set_page_config(page_title="AI Study Buddy", page_icon="favicon.png", layout="centered")
 
 try:
     RADACINA = Path(__file__).resolve().parent
