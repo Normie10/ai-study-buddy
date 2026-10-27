@@ -164,7 +164,7 @@ def _chat(ctx, s):
                 with st.chat_message("assistant", avatar=AVATAR):
                     st.markdown(_md(m["text"]))
             else:
-                with st.chat_message("user"):
+                with st.chat_message("user", avatar=AVATAR_ELEV):
                     st.markdown(_md(m["text"]))
 
     if st.button(t("pt.stop"), key="pt_stop", use_container_width=True):
