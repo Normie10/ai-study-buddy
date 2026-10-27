@@ -127,7 +127,7 @@ def _istoric(istoric):
         return
 
     favorite = [r for r in istoric_filtrat if r.get("este_favorit")]
-    restul = [r for r in istoric_filtrat if not r.get("este_favorit")]
+    restul = [r for r in istoric_filtrat if not r.get("este_favorit")][:50]
 
     if favorite:
         st.subheader(t("pr.favorite"))
@@ -148,7 +148,7 @@ def afiseaza(ctx):
         return
 
     try:
-        istoric = progres_utilizator()
+        istoric = progres_utilizator(limita=1000)
     except Exception as e:
         st.error(t("pr.eroare_incarcare", e=e))
         return
