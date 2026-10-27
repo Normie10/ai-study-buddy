@@ -423,3 +423,6 @@ TEXTE.update(
         "gen.ultima_eroare": ("Ultima eroare: {e}", "Last error: {e}"),
     }
 )
+
+from texte_greseala import TEXTE_GRESEALA
+TEXTE.update(TEXTE_GRESEALA)
