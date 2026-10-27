@@ -426,3 +426,6 @@ TEXTE.update(
 
 from texte_greseala import TEXTE_GRESEALA
 TEXTE.update(TEXTE_GRESEALA)
+
+from texte_preda import TEXTE_PREDA
+TEXTE.update(TEXTE_PREDA)
