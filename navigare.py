@@ -17,7 +17,7 @@ GRUPE = [
         "fitness_center",
         ["Quiz", "Examen", "Adevărat / Fals", "Găsește greșeala", "Completează", "SAT"],
     ),
-    ("invata", "menu_book", ["Flashcarduri", "Rezumat", "Întreabă"]),
+    ("invata", "menu_book", ["Flashcarduri", "Rezumat", "Întreabă", "Predă-mi tu"]),
     ("progres", "insights", ["Progresul meu"]),
 ]
 
@@ -31,6 +31,7 @@ ICONITE = {
     "Flashcarduri": "style",
     "Rezumat": "summarize",
     "Întreabă": "forum",
+    "Predă-mi tu": "record_voice_over",
     "Progresul meu": "insights",
 }
 
