@@ -32,6 +32,8 @@ SCOR_MAXIM = 100
 
 _FISIER_AVATAR = Path(__file__).resolve().parent.parent / "avatar_coleg.png"
 AVATAR = str(_FISIER_AVATAR) if _FISIER_AVATAR.exists() else None
+_FISIER_ELEV = Path(__file__).resolve().parent.parent / "avatar_elev.png"
+AVATAR_ELEV = str(_FISIER_ELEV) if _FISIER_ELEV.exists() else None
 
 
 def _md(text):
