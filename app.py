@@ -93,6 +93,7 @@ from taburi import (  # noqa: E402
     tab_rezumat,
     tab_sat,
 )
+from statistici_profil import statistici_progres  # noqa: E402
 from utile import fmt  # noqa: E402
 
 load_dotenv()
@@ -257,12 +258,12 @@ def _rezumat_progres():
     """Două numere rapide: total încercări și scor mediu. Pentru popover-ul
     de profil — statisticile complete sunt în secțiunea Progresul meu."""
     try:
-        istoric = progres_utilizator()
+        istoric, total_real = statistici_progres()
     except Exception:
         return None
     if not istoric:
         return None
-    total = len(istoric)
+    total = total_real
     procente = [100 * r["scor"] / r["total"] for r in istoric if r["total"]]
     medie = round(sum(procente) / len(procente)) if procente else 0
     return total, medie
