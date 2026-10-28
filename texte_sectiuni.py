@@ -181,10 +181,10 @@ TEXTE_SECTIUNI = {
     "ob.schimba": ("Schimbă obiectivul", "Change the goal"),
     "ob.pe_zi": ("Activități pe zi", "Activities per day"),
     "ob.ce_numara": (
-        "O activitate este un rezultat salvat: Quiz, Examen, SAT, Adevărat/Fals "
-        "sau Completează. Flashcardurile nu se numără.",
-        "An activity is a saved result: Quiz, Exam, SAT, True/False or Fill in "
-        "the blank. Flashcards do not count.",
+        "O activitate este un rezultat salvat: Quiz, Examen, SAT, Adevărat/Fals, "
+        "Completează, Găsește greșeala sau Predă-mi tu. Flashcardurile nu se numără.",
+        "An activity is a saved result: Quiz, Exam, SAT, True/False, Fill in "
+        "the blank, Find the mistake or Teach me. Flashcards do not count.",
     ),
     "ob.salveaza": ("Salvează obiectivul", "Save the goal"),
     "ob.doar_sesiune": (
