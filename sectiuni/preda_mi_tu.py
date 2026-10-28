@@ -226,7 +226,6 @@ def _rezultat(s):
 def afiseaza(ctx):
     """Funcția pe care o apelează aplicația pentru această secțiune."""
     injecteaza_stiluri()
-    st.caption(f"DIAGNOSTIC avatare: {AVATAR} | {AVATAR_ELEV}")
     st.caption(descriere_sectiune(NUME, DESCRIERE))
 
     s = st.session_state.get(CHEIE)
