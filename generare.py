@@ -154,7 +154,7 @@ Reguli:
 - În câmpul "pagina" pune numărul din eticheta [{eticheta.capitalize()} N] a
   fragmentului de unde provine răspunsul.
 - Răspunde DOAR cu JSON valid, fără alt text, în formatul:
-[{{"intrebare": "...", "variante": ["A", "B", "C", "D"], "corect": 0, "pagina": 1, "explicatie": "...", "de_ce_gresit": ["", "...", "...", "..."]}}]: ["A", "B", "C", "D"], "corect": 0, "pagina": 1, "explicatie": "..."}}]
+[{{"intrebare": "...", "variante": ["A", "B", "C", "D"], "corect": 0, "pagina": 1, "explicatie": "...", "de_ce_gresit": ["", "...", "...", "..."]}}]
 ("corect" este indexul variantei corecte, de la 0 la 3)
 
 TEXT:
