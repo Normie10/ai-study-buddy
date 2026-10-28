@@ -1,6 +1,6 @@
-"""Setări și texte fixe ale aplicației.
+"""Setări fixe ale aplicației.
 
-Aici se schimbă lucruri precum modelele folosite, limitele sau textele afișate.
+Aici se schimbă lucruri precum modelele folosite, limitele sau stilul aplicației.
 """
 
 # Încearcă modelele în ordinea asta. Dacă unul e aglomerat sau epuizat,
@@ -92,77 +92,7 @@ DISCLAIMER_SAT = (
     "de la College Board (aplicația Bluebook)."
 )
 
-# ------------------------- texte afișate în aplicație -------------------------
-DESCRIERI_TAB = {
-    "quiz": (
-        "Întrebări grilă sau mix (grilă + Adevărat/Fals), din materialul tău, cu "
-        "explicații și sursa fiecărui răspuns. Poți descărca quiz-ul pentru printat."
-    ),
-    "examen": (
-        "Un test cu cronometru, cu întrebări grilă sau mix (grilă + Adevărat/Fals). "
-        "La final primești scorul și un raport cu locurile din document la care "
-        "ai greșit cel mai mult."
-    ),
-    "carduri": (
-        "Flashcarduri cu repetare: apeși „Știu” sau „Nu știu”, iar cardurile "
-        "greșite revin până le înveți."
-    ),
-    "rezumat": (
-        "Rezumat scurt, mediu sau detaliat, cu sursele ideilor, pe care îl poți "
-        "descărca."
-    ),
-    "intreaba": (
-        "Pune o întrebare despre un concept pe care nu-l înțelegi și primești o "
-        "explicație simplă, bazată doar pe documentul tău."
-    ),
-}
-
-TEXT_GHID = """
-**Cum folosești aplicația**
-
-1. **Alege materialul.** Încarcă un PDF, un document Word sau un fișier text, ori
-   lipește text cu Ctrl+V. La documentele lungi alegi partea pe care vrei s-o
-   înveți (de exemplu un capitol).
-2. **Alege ce vrei să faci** din secțiunile de mai jos.
-3. **Învață și verifică.** Răspunsurile arată de unde vin în document (pagina sau
-   secțiunea), ca să poți verifica.
-
-**Secțiuni**
-
-- **Quiz:** întrebări grilă sau mix cu Adevărat/Fals, cu explicații, care se pot printa.
-- **Examen:** test cu cronometru și raport cu locurile la care ai greșit.
-- **SAT:** întrebări în stilul SAT-ului digital, fără document. Merge direct,
-  nu trebuie să încarci nimic.
-- **Flashcarduri:** cu repetare, cardurile greșite revin până le știi.
-- **Rezumat:** scurt, mediu sau detaliat.
-- **Întreabă:** explicații simple, din documentul tău.
-
-**Bine de știut**
-
-- AI-ul poate greși. Verifică mereu sursa indicată.
-- Aplicația folosește o limită gratuită, comună tuturor utilizatorilor. Dacă apare
-  un mesaj că modelele sunt indisponibile sau limita e atinsă, încearcă mai târziu.
-"""
-
-TEXT_FOOTER = (
-    "AI Study Buddy. Conținutul e generat de AI și poate conține greșeli. "
-    "Textul din documentele tale este trimis la Google pentru generare, deci nu "
-    "încărca materiale private. Pentru a economisi cereri, serverul păstrează "
-    "temporar în memorie întrebările generate și textul extras din ultimele "
-    "documente, până la repornirea aplicației."
-)
-
-# Antetul aplicației (același pe ecranul de login și pe pagina principală).
-# Trebuie să rămână pe UN SINGUR rând, fără linii goale, altfel Markdown îl
-# strică.
-HERO_HTML = (
-    '<div class="hero"><div class="hero-marca"></div><div>'
-    '<div class="hero-titlu">AI Study Buddy</div>'
-    '<div class="hero-sub">Transformă materialele tale în quiz-uri, teste cu '
-    "cronometru, flashcarduri și rezumate.</div>"
-    "</div></div>"
-)
-
+# ------------------------- stilul aplicației (CSS) -------------------------
 CSS_APP = """
 <style>
 :root {
