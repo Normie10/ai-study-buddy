@@ -59,7 +59,6 @@ from baza_date import (  # noqa: E402
     iese_din_mod_vizitator,
     incearca_restaureaza_sesiune,
     materiale_utilizator,
-    progres_utilizator,
     salveaza_material,
     sterge_material,
     toate_cookiurile,
