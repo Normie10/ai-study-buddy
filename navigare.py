@@ -15,7 +15,7 @@ GRUPE = [
     (
         "exerseaza",
         "fitness_center",
-        ["Quiz", "Examen", "Adevărat / Fals", "Găsește greșeala", "Completează", "SAT"],
+        ["Quiz", "Examen", "Adevărat / Fals", "Găsește greșeala", "Potrivește perechile", "Completează", "SAT"],
     ),
     ("invata", "menu_book", ["Flashcarduri", "Rezumat", "Întreabă", "Predă-mi tu"]),
     ("progres", "insights", ["Progresul meu"]),
@@ -28,6 +28,7 @@ ICONITE = {
     "Completează": "edit_note",
     "SAT": "school",
     "Găsește greșeala": "find_in_page",
+    "Potrivește perechile": "compare_arrows",
     "Flashcarduri": "style",
     "Rezumat": "summarize",
     "Întreabă": "forum",
