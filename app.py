@@ -81,7 +81,7 @@ from limbi import (  # noqa: E402
 from navigare import NUME_CUNOSCUTE, taburi_grupate  # noqa: E402
 from obiectiv_zilnic import afiseaza_obiectiv  # noqa: E402
 from stil_notificari import CSS_NOTIFICARI  # noqa: E402
-from stil_corecturi import CSS_UI  # noqa: E402
+from stil_ui import CSS_UI # noqa: E402
 from taburi import (  # noqa: E402
     Context,
     curata_rezultate,
