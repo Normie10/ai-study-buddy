@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Study Buddy - quiz-uri, teste și flashcarduri din materialele tale</title>
+<meta name="description" content="AI Study Buddy transformă cursurile și notițele tale în quiz-uri, teste cu cronometru, flashcarduri, rezumate și hărți de concepte. Pentru elevi și studenți, în română și engleză.">
+<link rel="canonical" href="https://normie10.github.io/ai-study-buddy/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="AI Study Buddy">
+<meta property="og:description" content="Din materialele tale: quiz-uri, teste cu cronometru, flashcarduri, rezumate și hărți de concepte.">
+<meta property="og:url" content="https://normie10.github.io/ai-study-buddy/">
+<meta name="color-scheme" content="dark">
+<!-- google-verification -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "AI Study Buddy",
+  "url": "https://ai-study-buddy-skv.streamlit.app",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Web",
+  "inLanguage": ["ro", "en"],
+  "description": "Aplicație web pentru elevi și studenți: din materialul încărcat generează quiz-uri, teste cu cronometru, flashcarduri, rezumate și hărți de concepte."
+}
+</script>
+<style>
+:root {
+  --accent: #E5383B;
+  --accent-soft: rgba(229, 56, 59, 0.10);
+  --bg: #0E1117;
+  --border: #2A2A30;
+  --surface: rgba(255, 255, 255, 0.03);
+  --text: #F2F2F4;
+  --muted: #9B9BA1;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+}
+main { max-width: 920px; margin: 0 auto; padding: 3rem 1.25rem 2rem; }
+.hero { display: flex; align-items: center; gap: 1.1rem; margin-bottom: 1rem; }
+.hero img { width: 72px; height: 72px; border-radius: 16px; }
+h1 { margin: 0; font-size: 2.4rem; letter-spacing: -0.03em; line-height: 1.1; }
+.sub { color: var(--muted); font-size: 1.1rem; max-width: 40rem; margin: 0.5rem 0 1.5rem; }
+.buton {
+  display: inline-block;
+  padding: 0.85rem 1.6rem;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #EA4A4D 0%, #D42F32 100%);
+  border: 1px solid #C92F32;
+  color: #FFFFFF;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(229, 56, 59, 0.3);
+}
+.buton:hover { filter: brightness(1.08); }
+.nota { color: var(--muted); font-size: 0.9rem; margin-top: 0.75rem; }
+h2 {
+  margin: 3rem 0 1rem;
+  font-size: 1.5rem;
+  letter-spacing: -0.015em;
+  padding-left: 0.75rem;
+  border-left: 4px solid var(--accent);
+}
+.pasi { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.pas, .card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+}
+.pas b { color: var(--accent); }
+.grup { margin: 1.5rem 0 0.6rem; font-size: 1.05rem; color: var(--accent); }
+.grila { display: grid; gap: 0.8rem; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.card h3 { margin: 0 0 0.3rem; font-size: 1rem; }
+.card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+.bine { color: var(--muted); }
+footer {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+a { color: var(--accent); }
+@media (max-width: 640px) { h1 { font-size: 1.8rem; } }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <img src="avatar_coleg.png" alt="Logo AI Study Buddy" width="72" height="72" onerror="this.style.display='none'">
+    <h1>AI Study Buddy</h1>
+  </header>
+  <p class="sub">Încarci cursul sau notițele, iar aplicația face din ele quiz-uri, teste cu cronometru, flashcarduri, rezumate și hărți de concepte. Pentru elevi și studenți, în română și engleză.</p>
+  <a class="buton" href="https://ai-study-buddy-skv.streamlit.app">Deschide aplicația</a>
+  <p class="nota">Poți intra și ca vizitator, fără cont.</p>
+
+  <h2>Cum funcționează</h2>
+  <div class="pasi">
+    <div class="pas"><b>1. Alegi materialul.</b><br>Încarci un PDF, un document Word sau un fișier text, ori lipești textul direct.</div>
+    <div class="pas"><b>2. Alegi ce vrei să faci.</b><br>Un quiz, un test cu cronometru, flashcarduri, un rezumat și altele.</div>
+    <div class="pas"><b>3. Înveți și verifici.</b><br>Fiecare răspuns arată pagina sau secțiunea din document, ca să poți verifica.</div>
+  </div>
+
+  <h2>Ce poți face</h2>
+  <h3 class="grup">Exersează</h3>
+  <div class="grila">
+    <div class="card"><h3>Quiz</h3><p>Întrebări grilă sau mix cu Adevărat/Fals, cu explicații pentru răspunsurile greșite.</p></div>
+    <div class="card"><h3>Examen</h3><p>Test cu cronometru și raport cu locurile din document la care ai greșit.</p></div>
+    <div class="card"><h3>Adevărat / Fals</h3><p>Afirmații din materialul tău, cu explicație și sursă.</p></div>
+    <div class="card"><h3>Găsește greșeala</h3><p>Paragrafe în care o propoziție a fost modificată subtil. O găsești tu.</p></div>
+    <div class="card"><h3>Potrivește perechile</h3><p>Legi fiecare termen de răspunsul lui.</p></div>
+    <div class="card"><h3>Completează</h3><p>Completezi spațiul liber dintr-o propoziție a materialului.</p></div>
+    <div class="card"><h3>SAT</h3><p>Întrebări în stilul SAT-ului digital, fără să încarci nimic.</p></div>
+  </div>
+  <h3 class="grup">Învață</h3>
+  <div class="grila">
+    <div class="card"><h3>Flashcarduri</h3><p>Cu repetare: cardurile greșite revin până le știi.</p></div>
+    <div class="card"><h3>Rezumat</h3><p>Scurt, mediu sau detaliat, cu sursele ideilor.</p></div>
+    <div class="card"><h3>Harta conceptelor</h3><p>Ideile principale ca o hartă, cu săgeți etichetate.</p></div>
+    <div class="card"><h3>Întreabă</h3><p>Pui o întrebare și primești o explicație bazată pe documentul tău.</p></div>
+    <div class="card"><h3>Predă-mi tu</h3><p>Explici un subiect unui coleg AI și primești o părere pe categorii.</p></div>
+  </div>
+  <h3 class="grup">Progres</h3>
+  <div class="grila">
+    <div class="card"><h3>Progresul meu</h3><p>Istoricul scorurilor, statistici și un obiectiv zilnic, cu un cont.</p></div>
+  </div>
+
+  <h2>Bine de știut</h2>
+  <p class="bine">Conținutul e generat de AI și poate conține greșeli, așa că verifică mereu sursa indicată. Textul din documentele tale este trimis la Google pentru generare, deci nu încărca materiale private.</p>
+</main>
+<footer>
+  AI Study Buddy. <a href="https://ai-study-buddy-skv.streamlit.app">Deschide aplicația</a>
+</footer>
+</body>
+</html>
