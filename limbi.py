@@ -432,3 +432,6 @@ TEXTE.update(TEXTE_PREDA)
 
 from texte_perechi import TEXTE_PERECHI
 TEXTE.update(TEXTE_PERECHI)
+
+from texte_harta import TEXTE_HARTA
+TEXTE.update(TEXTE_HARTA)
