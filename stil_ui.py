@@ -1,5 +1,6 @@
 """Stil în plus pentru navigare și răspunsuri: taburile mici în formă de
-pastilă, răspunsurile ca niște carduri și o aparițiune lină a conținutului."""
+pastilă, răspunsurile ca niște carduri, o aparițiune lină a conținutului și
+câteva corecturi (bara de sus ascunsă, butonul de profil deasupra)."""
 
 CSS_UI = """
 <style>
@@ -62,6 +63,23 @@ div[class*="st-key-nav_sub"] [data-baseweb="tab-border"] {
 [data-testid="stRadio"] div[role="radiogroup"] > label:has(input:checked) {
     border-color: var(--accent);
     background: var(--accent-soft);
+}
+
+/* ---------- Corecturi ---------- */
+/* Bara de sus a Streamlit acoperea butonul de profil. O ascundem complet,
+   împreună cu linia colorată de deasupra ei. */
+[data-testid="stHeader"],
+[data-testid="stDecoration"] {
+    display: none !important;
+}
+/* Fără bară, conținutul poate începe mai sus, iar butonul de profil urcă. */
+[data-testid="stMainBlockContainer"], .block-container {
+    padding-top: 1.5rem !important;
+}
+/* Butonul de profil, deasupra oricărui alt strat */
+div[class*="st-key-profil_fixat"] {
+    position: relative;
+    z-index: 1000;
 }
 </style>
 """
