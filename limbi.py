@@ -436,5 +436,7 @@ TEXTE.update(TEXTE_PERECHI)
 from texte_harta import TEXTE_HARTA
 TEXTE.update(TEXTE_HARTA)
 
+from texte_acasa import TEXTE_ACASA
+TEXTE.update(TEXTE_ACASA)
 from texte_plan import TEXTE_PLAN
 TEXTE.update(TEXTE_PLAN)
