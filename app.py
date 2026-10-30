@@ -81,7 +81,9 @@ from limbi import (  # noqa: E402
 from navigare import NUME_CUNOSCUTE, taburi_grupate  # noqa: E402
 from obiectiv_zilnic import afiseaza_obiectiv  # noqa: E402
 from stil_notificari import CSS_NOTIFICARI  # noqa: E402
-from stil_ui import CSS_UI # noqa: E402
+from stil_ui import CSS_UI  # noqa: E402
+from stil_acasa import CSS_ACASA  # noqa: E402
+from acasa import hero_acasa  # noqa: E402
 from taburi import (  # noqa: E402
     Context,
     curata_rezultate,
@@ -101,7 +103,7 @@ load_dotenv()
 st.markdown(CSS_APP, unsafe_allow_html=True)
 st.markdown(CSS_NOTIFICARI, unsafe_allow_html=True)
 st.markdown(CSS_UI, unsafe_allow_html=True)
-
+st.markdown(CSS_ACASA, unsafe_allow_html=True)
 # Valorile interne ale alegerii sursei (nu se traduc: logica se bazează pe ele)
 SURSA_FISIER = "Încarcă un fișier"
 SURSA_TEXT = "Lipește text"
@@ -435,7 +437,7 @@ with st.container(key="profil_fixat"):
     with st.popover(eticheta_profil, icon=":material/account_circle:"):
         panou_profil()
 
-st.markdown(hero_html(), unsafe_allow_html=True)
+st.markdown(hero_acasa(), unsafe_allow_html=True)
 
 # containerele din secțiunea „Progresul meu” unde se desenează obiectivul zilnic
 # (se completează la finalul paginii)
