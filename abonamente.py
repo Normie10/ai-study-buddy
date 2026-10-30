@@ -8,6 +8,7 @@ import streamlit as st
 
 from baza_date import _client, iese_din_mod_vizitator, utilizator_curent
 from limbi import t
+from stil_acasa import CSS_ABONAMENTE_EXTRA
 
 PLANURI = ("gratuit", "premium")
 NR_AVANTAJE = 6
@@ -269,7 +270,7 @@ def _card_html(plan, curent, facturare):
 def afiseaza_pagina_abonamente():
     """Pagina de abonamente. Înlocuiește tot restul paginii, inclusiv meniul
     de profil (așa nu poate rămâne deschis peste ea)."""
-    st.markdown(CSS_ABONAMENTE, unsafe_allow_html=True)
+    st.markdown(CSS_ABONAMENTE + CSS_ABONAMENTE_EXTRA, unsafe_allow_html=True)
 
     if st.button(
         t("abon_inapoi"), key="abon_inapoi", icon=":material/arrow_back:"
