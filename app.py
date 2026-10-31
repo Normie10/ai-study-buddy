@@ -543,7 +543,7 @@ ctx = Context(
 are_material = mat is not None and selectate is not None
 
 if pagina == "acasa":
-    afiseaza_acasa()
+        afiseaza_acasa(mat if are_material else None)
     with st.expander(t("ghid.titlu"), expanded=False):
         st.markdown(t("ghid.text"))
         necunoscute = [
