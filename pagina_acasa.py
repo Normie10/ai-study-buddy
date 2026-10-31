@@ -1,4 +1,5 @@
-"""Pagina Acasă: bun venit, progres, acțiuni rapide, activitate recentă."""
+"""Pagina Acasă: bun venit cu acțiunile principale, progres compact,
+activitate recentă și o bandă discretă de Premium."""
 
 import html
 
@@ -31,13 +32,6 @@ def _randuri():
         return rezultat.data or []
     except Exception:
         return []
-
-
-def _in_perioada(rand, limita):
-    try:
-        return pd.to_datetime(rand["creat_la"], utc=True) >= limita
-    except Exception:
-        return True
 
 
 def _statistici(randuri):
@@ -75,7 +69,8 @@ def _nume_tip(cod):
 
 
 # ------------------------- piese -------------------------
-def _hero():
+def _hero(mat):
+    """Bannerul: bun venit, materialul ales și acțiunile principale."""
     user = utilizator_curent()
     uri = logo_uri()
     logo = f'<img class="aca-logo" src="{uri}" alt="">' if uri else ""
@@ -89,69 +84,85 @@ def _hero():
     else:
         titlu = html.escape(t("ac.salut_viz"))
 
+    if mat is not None:
+        nume_mat = t("material.text_lipit") if mat["nume"] == "Text lipit" else mat["nume"]
+        linie = t("ac.material_activ", nume=nume_mat)
+    else:
+        linie = t("ac.hero.fara_material")
+    linie = html.escape(linie).replace("$", "&#36;")
+
     with st.container(key="aca_hero"):
         st.markdown(
             '<div class="aca-hero-text">'
             f'<div class="aca-titlu">{titlu}</div>'
             f'<div class="aca-sub">{html.escape(t("ac.sub"))}</div>'
+            f'<div class="aca-material">{linie}</div>'
             f"</div>{logo}",
             unsafe_allow_html=True,
         )
-        coloane = st.columns([1, 1, 1, 1.6])
-        for col, (nume_s, cod) in zip(
-            coloane, (("Quiz", "quiz"), ("Examen", "examen"), ("SAT", "sat"))
-        ):
-            col.button(
-                nume_tab(nume_s),
-                key=f"aca_h_{cod}",
-                icon=f":material/{ICONITE.get(nume_s, 'apps')}:",
+        coloane = st.columns([1.1, 1.1, 1.1, 1.4])
+        if mat is not None:
+            actiuni = (
+                ("Quiz", "quiz", "primary"),
+                ("Examen", "examen", "secondary"),
+                ("Flashcarduri", "carduri", "secondary"),
+            )
+            for col, (nume_s, cod, tip) in zip(coloane, actiuni):
+                col.button(
+                    nume_tab(nume_s),
+                    key=f"aca_h_{cod}",
+                    icon=f":material/{ICONITE.get(nume_s, 'apps')}:",
+                    on_click=mergi,
+                    args=(nume_s,),
+                    type=tip,
+                    use_container_width=True,
+                )
+        else:
+            coloane[0].button(
+                t("ac.alege_material"),
+                key="aca_h_doc",
+                icon=":material/folder_open:",
                 on_click=mergi,
-                args=(nume_s,),
+                args=("documente",),
+                type="primary",
+                use_container_width=True,
+            )
+            coloane[1].button(
+                t("ac.sat_fara_material"),
+                key="aca_h_sat",
+                icon=f":material/{ICONITE.get('SAT', 'school')}:",
+                on_click=mergi,
+                args=("SAT",),
                 use_container_width=True,
             )
 
 
 def _progres(toate):
     user = utilizator_curent()
+    medie, quiz, examene, alte = _statistici(toate)
+
+    if user is None:
+        mesaj = t("ac.vizitator_progres")
+    elif not toate:
+        mesaj = t("ac.fara_date")
+    elif medie >= 70:
+        mesaj = t("ac.mesaj_bun")
+    else:
+        mesaj = t("ac.mesaj_incurajare")
+
+    randuri_html = (
+        (t("ac.quizuri"), quiz, "p1"),
+        (t("ac.examene"), examene, "p2"),
+        (t("ac.alte"), alte, "p3"),
+    )
+    lista = "".join(
+        f'<li><i class="aca-pct {c}"></i><span>{html.escape(n)}</span>'
+        f"<b>{v}</b></li>"
+        for n, v, c in randuri_html
+    )
     with st.container(key="aca_progres"):
-        h1, h2 = st.columns([1.3, 1])
-        h1.markdown(
-            f'<div class="aca-card-titlu">{html.escape(t("ac.progres"))}</div>',
-            unsafe_allow_html=True,
-        )
-        perioada = h2.selectbox(
-            t("ac.perioada"),
-            ["7", "tot"],
-            format_func=lambda v: t(f"ac.perioada_{v}"),
-            key="aca_perioada",
-            label_visibility="collapsed",
-        )
-        randuri = toate
-        if perioada == "7":
-            limita = pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=7)
-            randuri = [r for r in toate if _in_perioada(r, limita)]
-        medie, quiz, examene, alte = _statistici(randuri)
-
-        if user is None:
-            mesaj = t("ac.vizitator_progres")
-        elif not randuri:
-            mesaj = t("ac.fara_date")
-        elif medie >= 70:
-            mesaj = t("ac.mesaj_bun")
-        else:
-            mesaj = t("ac.mesaj_incurajare")
-
-        randuri_html = (
-            (t("ac.quizuri"), quiz, "p1"),
-            (t("ac.examene"), examene, "p2"),
-            (t("ac.alte"), alte, "p3"),
-        )
-        lista = "".join(
-            f'<li><i class="aca-pct {c}"></i><span>{html.escape(n)}</span>'
-            f"<b>{v}</b></li>"
-            for n, v, c in randuri_html
-        )
         st.markdown(
+            f'<div class="aca-card-titlu">{html.escape(t("ac.progres"))}</div>'
             '<div class="aca-prog">'
             f'<div class="aca-inel" style="--p:{medie}"><div class="aca-inel-in">'
             f'<b>{medie}%</b><span>{html.escape(t("ac.scor_mediu"))}</span>'
@@ -162,41 +173,9 @@ def _progres(toate):
         )
 
 
-def _rapide():
-    actiuni = (
-        ("quiz", "Quiz"),
-        ("examen", "Examen"),
-        ("rezumat", "Rezumat"),
-        ("intreaba", "Întreabă"),
-    )
-    with st.container(key="aca_rapide"):
-        st.markdown(
-            f'<div class="aca-card-titlu">{html.escape(t("ac.rapide"))}</div>',
-            unsafe_allow_html=True,
-        )
-        r1 = st.columns(2)
-        r2 = st.columns(2)
-        for celula, (cod, pagina) in zip(r1 + r2, actiuni):
-            with celula:
-                with st.container(key=f"aca_q_{cod}"):
-                    st.markdown(
-                        f'<div class="aca-q-t">{html.escape(t(f"ac.q.{cod}.t"))}</div>'
-                        f'<div class="aca-q-d">{html.escape(t(f"ac.q.{cod}.d"))}</div>',
-                        unsafe_allow_html=True,
-                    )
-                    st.button(
-                        t("ac.start"),
-                        key=f"aca_qb_{cod}",
-                        icon=f":material/{ICONITE.get(pagina, 'apps')}:",
-                        on_click=mergi,
-                        args=(pagina,),
-                        use_container_width=True,
-                    )
-
-
 def _recent(toate):
     with st.container(key="aca_recent"):
-        c1, c2 = st.columns([2, 1])
+        c1, c2 = st.columns([2, 1], vertical_alignment="center")
         c1.markdown(
             f'<div class="aca-card-titlu">{html.escape(t("ac.recent"))}</div>',
             unsafe_allow_html=True,
@@ -226,32 +205,32 @@ def _recent(toate):
 
 
 def _premium():
+    """Bandă discretă, nu un card mare."""
     with st.container(key="aca_premium"):
-        st.markdown(
+        c1, c2 = st.columns([3, 1.2], vertical_alignment="center")
+        c1.markdown(
             f'<div class="aca-prem-t">{html.escape(t("ac.prem.titlu"))}</div>'
             f'<div class="aca-prem-d">{html.escape(t("ac.prem.text"))}</div>',
             unsafe_allow_html=True,
         )
-        if st.button(
+        if c2.button(
             t("ac.prem.btn"),
             key="aca_prem_btn",
             icon=":material/workspace_premium:",
+            use_container_width=True,
         ):
             deschide_abonamente()
 
 
-def afiseaza_acasa():
+def afiseaza_acasa(mat=None):
+    """mat = materialul ales (sau None dacă nu e ales niciunul)."""
     # marcaj: CSS-ul lărgește pagina doar când acest element există
     st.markdown('<div class="aca-marker"></div>', unsafe_allow_html=True)
     toate = _randuri()
-    _hero()
-    c1, c2 = st.columns([1, 1.15])
+    _hero(mat)
+    c1, c2 = st.columns([1, 1.25], gap="large")
     with c1:
         _progres(toate)
     with c2:
-        _rapide()
-    c3, c4 = st.columns([1.15, 1])
-    with c3:
         _recent(toate)
-    with c4:
-        _premium()
+    _premium()
