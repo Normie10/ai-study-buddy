@@ -10,6 +10,11 @@ TEXTE_TEMA = {
         "Învață mai eficient, atinge-ți obiectivele și bucură-te de învățare.",
         "Learn more efficiently, reach your goals and enjoy learning.",
     ),
+    "ac.hero.fara_material": (
+        "Începe prin a alege materialul din care înveți.",
+        "Start by choosing the material you learn from.",
+    ),
+    "ac.sat_fara_material": ("SAT, fără material", "SAT, no material needed"),
     "ac.progres": ("Progresul tău", "Your progress"),
     "ac.perioada": ("Perioada", "Period"),
     "ac.perioada_7": ("Ultimele 7 zile", "Last 7 days"),
