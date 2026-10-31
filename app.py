@@ -1,10 +1,14 @@
 """AI Study Buddy: fișierul principal (aspectul paginii).
 
 Restul codului e împărțit în fișiere separate:
-  config.py          setări, texte și stilul aplicației (CSS)
+  config.py          setări și stilul general al aplicației (CSS)
   limbi.py           traducerea interfeței (română / engleză)
-  navigare.py        taburile grupate (Exersează, Învață, Progres)
-  stil_ui.py         stil în plus: taburi mici, răspunsuri ca niște carduri
+  navigare.py        grupurile de secțiuni (Exersează, Învață, Progres)
+  meniu_lateral.py   meniul din stânga
+  pagina_acasa.py    pagina Acasă (progres, acțiuni rapide, activitate recentă)
+  utile_pagini.py    ajutoare pentru navigarea între pagini
+  stil_ui.py         stil în plus: taburi, răspunsuri ca niște carduri
+  stil_tema.py       tema violet (se încarcă ultima)
   stil_notificari.py notificările fixe (rotița de încărcare, avertismentul)
   obiectiv_zilnic.py obiectivul zilnic și seria de zile
   abonamente.py      pagina de abonamente (prototip)
@@ -32,7 +36,12 @@ import streamlit as st
 from streamlit_javascript import st_javascript
 
 # Trebuie să fie prima comandă Streamlit din script
-st.set_page_config(page_title="AI Study Buddy", page_icon="favicon.png", layout="centered")
+st.set_page_config(
+    page_title="AI Study Buddy",
+    page_icon="favicon.png",
+    layout="centered",
+    initial_sidebar_state="expanded",
+)
 
 try:
     RADACINA = Path(__file__).resolve().parent
@@ -78,12 +87,13 @@ from limbi import (  # noqa: E402
     t,
     unitate_ui,
 )
-from navigare import NUME_CUNOSCUTE, taburi_grupate  # noqa: E402
+from meniu_lateral import deseneaza_meniu  # noqa: E402
+from navigare import NUME_CUNOSCUTE  # noqa: E402
 from obiectiv_zilnic import afiseaza_obiectiv  # noqa: E402
+from pagina_acasa import afiseaza_acasa  # noqa: E402
 from stil_notificari import CSS_NOTIFICARI  # noqa: E402
+from stil_tema import CSS_TEMA  # noqa: E402
 from stil_ui import CSS_UI  # noqa: E402
-from stil_acasa import CSS_ACASA  # noqa: E402
-from acasa import hero_acasa  # noqa: E402
 from taburi import (  # noqa: E402
     Context,
     curata_rezultate,
@@ -96,14 +106,17 @@ from taburi import (  # noqa: E402
 )
 from statistici_profil import statistici_progres  # noqa: E402
 from utile import fmt  # noqa: E402
+from utile_pagini import mergi  # noqa: E402
 
 load_dotenv()
 
 # Stilul se încarcă primul, ca să se aplice și ecranelor de login / resetare.
+# Tema violet vine ultima, ca să le suprascrie pe celelalte.
 st.markdown(CSS_APP, unsafe_allow_html=True)
 st.markdown(CSS_NOTIFICARI, unsafe_allow_html=True)
 st.markdown(CSS_UI, unsafe_allow_html=True)
-st.markdown(CSS_ACASA, unsafe_allow_html=True)
+st.markdown(CSS_TEMA, unsafe_allow_html=True)
+
 # Valorile interne ale alegerii sursei (nu se traduc: logica se bazează pe ele)
 SURSA_FISIER = "Încarcă un fișier"
 SURSA_TEXT = "Lipește text"
@@ -223,22 +236,20 @@ def incarca_material_salvat(continut):
 
 
 # ------------------------- piese de aspect -------------------------
-def hero_html():
-    """Antetul aplicației. Totul pe un singur rând, fără linii goale, altfel
-    Markdown îl strică."""
-    return (
-        '<div class="hero"><div class="hero-marca"></div><div>'
-        f'<div class="hero-titlu">{html.escape(t("hero.titlu"))}</div>'
-        f'<div class="hero-sub">{html.escape(t("hero.sub"))}</div>'
-        "</div></div>"
-    )
-
-
 def pas_titlu(numar, text):
-    """Antetul unui pas: un cerc roșu cu numărul și titlul alături."""
+    """Antetul unui pas: un cerc colorat cu numărul și titlul alături."""
     st.markdown(
         f'<div class="pas"><span class="pas-nr">{numar}</span>'
         f'<span class="pas-titlu">{html.escape(text)}</span></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def titlu_pagina(titlu, subtitlu=""):
+    """Titlul paginii curente, sub care vine conținutul."""
+    sub = f'<div class="pagina-sub">{html.escape(subtitlu)}</div>' if subtitlu else ""
+    st.markdown(
+        f'<div class="pagina-titlu">{html.escape(titlu)}</div>{sub}',
         unsafe_allow_html=True,
     )
 
@@ -249,9 +260,34 @@ def stare_goala(descriere):
         '<div class="gol">'
         f'<div class="gol-titlu">{html.escape(t("gol.titlu"))}</div>'
         f'<div class="gol-text">{html.escape(descriere)}</div>'
-        f'<div class="gol-indiciu">{html.escape(t("gol.indiciu"))}</div>'
+        f'<div class="gol-indiciu">{html.escape(t("ac.gol_indiciu"))}</div>'
         "</div>",
         unsafe_allow_html=True,
+    )
+    st.button(
+        t("ac.alege_material"),
+        key="gol_alege_material",
+        icon=":material/folder_open:",
+        on_click=mergi,
+        args=("documente",),
+        type="primary",
+    )
+
+
+def bara_material(mat, are_material):
+    """Un rând mic, sub titlul unei secțiuni: ce material e ales acum."""
+    if not are_material:
+        return
+    nume = t("material.text_lipit") if mat["nume"] == "Text lipit" else mat["nume"]
+    nume = html.escape(t("ac.material_activ", nume=nume)).replace("$", "&#36;")
+    c1, c2 = st.columns([4, 1])
+    c1.markdown(f'<div class="material-activ">{nume}</div>', unsafe_allow_html=True)
+    c2.button(
+        t("ac.schimba"),
+        key="bara_schimba_material",
+        on_click=mergi,
+        args=("documente",),
+        use_container_width=True,
     )
 
 
@@ -322,6 +358,16 @@ def panou_profil():
         if butoane_vizitator():
             iese_din_mod_vizitator()
             st.rerun()
+
+
+def profil_lateral():
+    """Butonul de profil din meniul lateral."""
+    if utilizator_curent() is not None:
+        eticheta_profil = utilizator_curent().email.split("@")[0]
+    else:
+        eticheta_profil = t("profil.vizitator.eticheta")
+    with st.popover(eticheta_profil, icon=":material/account_circle:"):
+        panou_profil()
 
 
 def pasul_material():
@@ -423,56 +469,18 @@ if utilizator_curent() is None and not este_vizitator():
     st.stop()
 
 # ------------------------- pagina -------------------------
-# pagina de abonamente: înlocuiește tot restul paginii (și meniul de profil,
-# ca să nu rămână deschis peste ea)
+# pagina de abonamente: înlocuiește tot restul paginii
 if st.session_state.get("pagina_abonamente"):
     afiseaza_pagina_abonamente()
     st.stop()
 
-with st.container(key="profil_fixat"):
-    if utilizator_curent() is not None:
-        eticheta_profil = utilizator_curent().email.split("@")[0]
-    else:
-        eticheta_profil = t("profil.vizitator.eticheta")
-    with st.popover(eticheta_profil, icon=":material/account_circle:"):
-        panou_profil()
-
-st.markdown(hero_acasa(), unsafe_allow_html=True)
+# secțiunile (de bază + cele din folderul sectiuni/)
+sectiuni_noi, erori_sectiuni = incarca_sectiuni_noi()
+sectiuni = sorted(SECTIUNI_DE_BAZA + sectiuni_noi, key=lambda s: s["ordine"])
 
 # containerele din secțiunea „Progresul meu” unde se desenează obiectivul zilnic
 # (se completează la finalul paginii)
 zone_obiectiv = []
-
-# loc rezervat pentru avertismentul de salvare: îl completăm la finalul paginii,
-# după ce toate secțiunile au rulat (o salvare poate eșua oriunde în pagină).
-# Plutește pe ecran, vezi stil_notificari.py
-zona_avertisment = st.container(key="avert_salvare")
-
-# loc rezervat pentru ghid: îl completăm după ce știm ce secțiuni există
-zona_intro = st.container()
-
-api_key = cheie_api()
-if not api_key:
-    st.error(t("eroare.cheie_api"))
-    st.stop()
-
-client = genai.Client(
-    api_key=api_key,
-    http_options=types.HttpOptions(timeout=90000),  # 90 de secunde per încercare
-)
-
-limba, mat, selectate, hash_material = pasul_material()
-ctx = Context(
-    client=client,
-    limba=limba,
-    mat=mat,
-    selectate=selectate,
-    hash_material=hash_material,
-)
-are_material = mat is not None and selectate is not None
-
-sectiuni_noi, erori_sectiuni = incarca_sectiuni_noi()
-sectiuni = sorted(SECTIUNI_DE_BAZA + sectiuni_noi, key=lambda s: s["ordine"])
 
 
 # obiectivul zilnic stă în secțiunea „Progresul meu”: îi punem un loc rezervat
@@ -490,8 +498,52 @@ for s in sectiuni_noi:
         s["afiseaza"] = _cu_loc_pentru_obiectiv(s["afiseaza"])
         break
 
-# ghidul: închis implicit (pagina rămâne curată); se deschide cu un click
-with zona_intro:
+# pagina curentă: "acasa", "documente" sau numele unei secțiuni
+pagina = st.session_state.get("pagina", "acasa")
+if pagina not in {"acasa", "documente"} | {s["nume"] for s in sectiuni}:
+    pagina = "acasa"
+    st.session_state["pagina"] = pagina
+
+deseneaza_meniu(sectiuni, pagina, profil_lateral)
+
+# loc rezervat pentru avertismentul de salvare: îl completăm la finalul paginii,
+# după ce toate secțiunile au rulat (o salvare poate eșua oriunde în pagină).
+# Plutește pe ecran, vezi stil_notificari.py
+zona_avertisment = st.container(key="avert_salvare")
+
+api_key = cheie_api()
+if not api_key:
+    st.error(t("eroare.cheie_api"))
+    st.stop()
+
+client = genai.Client(
+    api_key=api_key,
+    http_options=types.HttpOptions(timeout=90000),  # 90 de secunde per încercare
+)
+
+# Materialul se desenează la fiecare rulare (altfel fișierul ales s-ar pierde
+# când schimbi pagina), dar se vede doar pe pagina Documente.
+if pagina == "documente":
+    titlu_pagina(t("ac.doc.titlu"), t("ac.doc.sub"))
+else:
+    st.markdown(
+        '<style>div[class*="st-key-material_zona"]{display:none !important}</style>',
+        unsafe_allow_html=True,
+    )
+with st.container(key="material_zona"):
+    limba, mat, selectate, hash_material = pasul_material()
+
+ctx = Context(
+    client=client,
+    limba=limba,
+    mat=mat,
+    selectate=selectate,
+    hash_material=hash_material,
+)
+are_material = mat is not None and selectate is not None
+
+if pagina == "acasa":
+    afiseaza_acasa()
     with st.expander(t("ghid.titlu"), expanded=False):
         st.markdown(t("ghid.text"))
         necunoscute = [
@@ -508,26 +560,26 @@ with zona_intro:
                 )
             )
 
-# ---------------- pasul 2: ce vrei să faci ----------------
-pas_titlu(2, t("pas.2"))
+elif pagina == "documente":
+    if are_material:
+        st.info(t("ac.doc.gata"))
 
-for eroare in erori_sectiuni:
-    st.warning(t("eroare.sectiune_noua", eroare=eroare))
-
-taburi_ui = taburi_grupate(sectiuni)
-for tab, s in zip(taburi_ui, sectiuni):
-    with tab:
-        if s["cere_material"] and not are_material:
-            stare_goala(descriere_sectiune(s["nume"], s["descriere"]))
-        elif s.get("noua"):
-            try:
-                s["afiseaza"](ctx)
-            except Exception as e_sectiune:
-                st.error(
-                    t("eroare.sectiune", nume=nume_tab(s["nume"]), e=e_sectiune)
-                )
-        else:
+else:
+    s = next(x for x in sectiuni if x["nume"] == pagina)
+    titlu_pagina(nume_tab(s["nume"]))
+    for eroare in erori_sectiuni:
+        st.warning(t("eroare.sectiune_noua", eroare=eroare))
+    if s["cere_material"]:
+        bara_material(mat, are_material)
+    if s["cere_material"] and not are_material:
+        stare_goala(descriere_sectiune(s["nume"], s["descriere"]))
+    elif s.get("noua"):
+        try:
             s["afiseaza"](ctx)
+        except Exception as e_sectiune:
+            st.error(t("eroare.sectiune", nume=nume_tab(s["nume"]), e=e_sectiune))
+    else:
+        s["afiseaza"](ctx)
 
 # obiectivul zilnic: se desenează abia acum, ca să includă și ce s-a terminat
 # chiar în această rulare (un quiz predat, un test încheiat)
