@@ -1,5 +1,5 @@
 """Meniul din stânga: logo, profil, Acasă, categoriile pliabile de secțiuni,
-Documente și o notă discretă despre Premium."""
+Documente, nota despre Premium și robotul de jos."""
 
 import html
 
@@ -8,7 +8,7 @@ import streamlit as st
 from abonamente import deschide_abonamente
 from limbi import nume_tab, t
 from navigare import GRUPE, ICONITE
-from utile_pagini import logo_uri, mergi
+from utile_pagini import imagine_uri, mergi
 
 
 def _grupe(sectiuni):
@@ -47,7 +47,7 @@ def _categorie(eticheta, deschis, icoana):
 
 
 def deseneaza_meniu(sectiuni, curenta, deseneaza_profil):
-    uri = logo_uri()
+    uri = imagine_uri("logo_mic.png", "mascota.png", "avatar_coleg.png")
     logo = f'<img class="brand-logo" src="{uri}" alt="">' if uri else ""
     with st.sidebar:
         st.markdown(
@@ -82,8 +82,11 @@ def deseneaza_meniu(sectiuni, curenta, deseneaza_profil):
             )
 
         with st.container(key="meniu_premium"):
+            titlu = html.escape(t("ac.prem.titlu"))
+            sub = html.escape(t("ac.prem.sub"))
             st.markdown(
-                f'<div class="meniu-prem-t">{html.escape(t("ac.prem.titlu"))}</div>',
+                f'<div class="meniu-prem-t">{titlu}</div>'
+                f'<div class="meniu-prem-d">{sub}</div>',
                 unsafe_allow_html=True,
             )
             if st.button(
@@ -93,3 +96,10 @@ def deseneaza_meniu(sectiuni, curenta, deseneaza_profil):
                 use_container_width=True,
             ):
                 deschide_abonamente()
+
+        robot = imagine_uri("robot_meniu.png")
+        if robot:
+            st.markdown(
+                f'<img class="meniu-robot" src="{robot}" alt="">',
+                unsafe_allow_html=True,
+            )
