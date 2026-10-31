@@ -361,14 +361,14 @@ def _stats(toate):
     var_nr = None
     if precedente:
         var_nr = round(100 * (len(curente) - len(precedente)) / len(precedente))
-    trend_nr = _trend(var_nr, f"{var_nr:+d}%") if var_nr is not None else ""
+    trend_nr = _trend(var_nr, f"{abs(var_nr)}%") if var_nr is not None else ""
 
     medie = _medie(toate)
     m_cur, m_prec = _medie(curente), _medie(precedente)
     trend_medie = ""
     if m_cur is not None and m_prec is not None:
         dif = round(m_cur - m_prec, 1)
-        trend_medie = _trend(dif, _num(dif) + "%" if dif == 0 else f"{'+' if dif > 0 else ''}{_num(dif)}%")
+        trend_medie = _trend(dif, _num(abs(dif)) + "%")
 
     serie = _serie(toate)
     text_serie = t("ac.zi_unu") if serie == 1 else t("ac.zile", n=serie)
