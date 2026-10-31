@@ -1,16 +1,56 @@
-"""Pagina Acasă: bun venit cu acțiunile principale, progres compact,
-activitate recentă și o bandă discretă de Premium."""
+"""Pagina Acasă, aranjată ca în modelul ales: bun venit cu robotul și cele 6
+acțiuni principale, progres, activitate recentă, Premium, statistici și
+obiectivul de azi."""
 
+import datetime
 import html
 
 import pandas as pd
 import streamlit as st
 
 from abonamente import deschide_abonamente
-from baza_date import _client, utilizator_curent
-from limbi import nume_tab, t
-from navigare import ICONITE
-from utile_pagini import logo_uri, mergi
+from baza_date import _client, obiectiv_zilnic, utilizator_curent
+from limbi import limba_ui, nume_tab, t
+from utile_pagini import imagine_uri, mergi
+
+BUC = "Europe/Bucharest"
+
+# iconițe simple, desenate aici (nu depind de nicio bibliotecă)
+IC = {
+    "quiz": '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.8"/><path d="M12 17h.01"/>',
+    "clip": '<rect x="6" y="4.5" width="12" height="16" rx="2"/><path d="M9 4.5V3h6v1.5M9 10h6M9 14h6"/>',
+    "star": '<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z" fill="#FFFFFF"/>',
+    "cards": '<rect x="4" y="7" width="13" height="11" rx="2"/><path d="M8 4h11a1 1 0 0 1 1 1v9M8 11h5"/>',
+    "doc": '<path d="M7 3.5h7l4 4V20.5H7z"/><path d="M14 3.5V8h4M9.5 12h5M9.5 15.5h5"/>',
+    "chat": '<path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-7l-4 3.5V16H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><path d="M10.3 9.3a1.8 1.8 0 1 1 2.6 1.6c-.6.3-.9.7-.9 1.3M12 13.8h.01"/>',
+    "trend": '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+    "check": '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    "clock": '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    "bolt": '<path d="M13 3L6 13.5h5L10 21l8-11h-5z"/>',
+    "bars": '<path d="M5 20V11M12 20V5M19 20v-6"/>',
+    "cal": '<rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8 3.5v3M16 3.5v3"/>',
+    "crown": '<path d="M3.5 18.5L5 8l4.5 4L12 6l2.5 6L19 8l1.5 10.5z" fill="#F5B83D" stroke="#F5B83D"/>',
+    "trofeu": '<path d="M8 4h8v5a4 4 0 0 1-8 0z" fill="#F5B83D" stroke="#F5B83D"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4" stroke="#F5B83D"/><path d="M12 13v4M8.5 19h7" stroke="#F5B83D"/>',
+}
+
+
+def _svg(cheie, tam=22, culoare="#FFFFFF", latime=1.8):
+    return (
+        f'<svg viewBox="0 0 24 24" width="{tam}" height="{tam}" fill="none" '
+        f'stroke="{culoare}" stroke-width="{latime}" stroke-linecap="round" '
+        f'stroke-linejoin="round">{IC[cheie]}</svg>'
+    )
+
+
+# (nume secțiune, cod, iconiță, culoare sus, culoare jos)
+CARDURI = (
+    ("Quiz", "quiz", "quiz", "#FF5C7C", "#E8336D"),
+    ("Examen", "examen", "clip", "#FF9A4D", "#F2681C"),
+    ("SAT", "sat", "star", "#5B9BFF", "#2F6BEA"),
+    ("Flashcarduri", "carduri", "cards", "#A77BFF", "#7A45F0"),
+    ("Rezumat", "rezumat", "doc", "#3FD58A", "#1FA35C"),
+    ("Întreabă", "intreaba", "chat", "#BE7BFF", "#8E4BEE"),
+)
 
 
 # ------------------------- date -------------------------
@@ -34,20 +74,77 @@ def _randuri():
         return []
 
 
-def _statistici(randuri):
+def _ts(valoare):
+    try:
+        return pd.to_datetime(valoare, utc=True)
+    except Exception:
+        return None
+
+
+def _zi(valoare):
+    try:
+        return pd.to_datetime(valoare, utc=True).tz_convert(BUC).date()
+    except Exception:
+        return None
+
+
+def _medie(randuri):
     procente = [100 * r["scor"] / r["total"] for r in randuri if r.get("total")]
-    medie = round(sum(procente) / len(procente)) if procente else 0
-    quiz = sum(1 for r in randuri if r["sectiune"] == "quiz")
-    examene = sum(1 for r in randuri if r["sectiune"] == "examen")
-    return medie, quiz, examene, len(randuri) - quiz - examene
+    return sum(procente) / len(procente) if procente else None
+
+
+def _num(valoare, zecimale=1):
+    text = f"{valoare:.{zecimale}f}"
+    return text.replace(".", ",") if limba_ui() == "ro" else text
+
+
+def _perioade(toate):
+    """Rezultatele din ultimele 7 zile și din cele 7 dinainte."""
+    acum = pd.Timestamp.now(tz="UTC")
+    curente, precedente = [], []
+    for r in toate:
+        moment = _ts(r.get("creat_la"))
+        if moment is None:
+            continue
+        zile = (acum - moment).total_seconds() / 86400
+        if zile <= 7:
+            curente.append(r)
+        elif zile <= 14:
+            precedente.append(r)
+    return curente, precedente
+
+
+def _trend(valoare, text):
+    """Săgeată colorată (verde în sus, roșie în jos). Fără valoare: nimic."""
+    if valoare is None:
+        return ""
+    if valoare > 0:
+        clasa, sageata = "sus", "↑"
+    elif valoare < 0:
+        clasa, sageata = "jos", "↓"
+    else:
+        clasa, sageata = "egal", "→"
+    return f'<span class="aca-tr {clasa}">{sageata} {html.escape(text)}</span>'
+
+
+def _serie(toate):
+    """Câte zile la rând (până azi sau ieri) are cel puțin un rezultat."""
+    zile = {d for d in (_zi(r.get("creat_la")) for r in toate) if d}
+    ziua = pd.Timestamp.now(tz=BUC).date()
+    if ziua not in zile:
+        ziua = ziua - datetime.timedelta(days=1)
+    n = 0
+    while ziua in zile:
+        n += 1
+        ziua = ziua - datetime.timedelta(days=1)
+    return n
 
 
 def _timp(valoare):
-    try:
-        moment = pd.to_datetime(valoare, utc=True)
-        secunde = (pd.Timestamp.now(tz="UTC") - moment).total_seconds()
-    except Exception:
+    moment = _ts(valoare)
+    if moment is None:
         return ""
+    secunde = (pd.Timestamp.now(tz="UTC") - moment).total_seconds()
     if secunde < 60:
         return t("ac.acum")
     if secunde < 3600:
@@ -59,7 +156,7 @@ def _timp(valoare):
         return t("ac.acum_zi")
     if zile < 7:
         return t("ac.acum_zile", n=zile)
-    return moment.tz_convert("Europe/Bucharest").strftime("%d.%m.%Y")
+    return moment.tz_convert(BUC).strftime("%d.%m.%Y")
 
 
 def _nume_tip(cod):
@@ -68,19 +165,25 @@ def _nume_tip(cod):
     return cod if nume == cheie else nume
 
 
+def _titlu_card(icoana, text):
+    return (
+        '<div class="aca-ch">'
+        f'<span class="aca-chi">{_svg(icoana, 20, "#A78BFA", 2)}</span>'
+        f'<span class="aca-card-titlu">{html.escape(text)}</span></div>'
+    )
+
+
 # ------------------------- piese -------------------------
 def _hero(mat):
-    """Bannerul: bun venit, materialul ales și acțiunile principale."""
+    """Bun venit, robotul și cele 6 acțiuni principale."""
     user = utilizator_curent()
-    uri = logo_uri()
-    logo = f'<img class="aca-logo" src="{uri}" alt="">' if uri else ""
+    robot = imagine_uri("robot_hero.png", "mascota.png")
+    img = f'<img class="aca-robot" src="{robot}" alt="">' if robot else ""
     if user is not None and getattr(user, "email", None):
         nume = user.email.split("@")[0]
         nume = nume[:1].upper() + nume[1:]
-        titlu = (
-            f'{html.escape(t("ac.salut_inceput"))}'
-            f'<span class="aca-nume">{html.escape(nume)}</span>!'
-        )
+        salut = html.escape(t("ac.salut_inceput"))
+        titlu = f'{salut}<span class="aca-nume">{html.escape(nume)}</span>!'
     else:
         titlu = html.escape(t("ac.salut_viz"))
 
@@ -90,35 +193,20 @@ def _hero(mat):
     else:
         linie = t("ac.hero.fara_material")
     linie = html.escape(linie).replace("$", "&#36;")
+    sub = html.escape(t("ac.sub"))
 
     with st.container(key="aca_hero"):
         st.markdown(
             '<div class="aca-hero-text">'
             f'<div class="aca-titlu">{titlu}</div>'
-            f'<div class="aca-sub">{html.escape(t("ac.sub"))}</div>'
+            f'<div class="aca-sub">{sub}</div>'
             f'<div class="aca-material">{linie}</div>'
-            f"</div>{logo}",
+            f"</div>{img}",
             unsafe_allow_html=True,
         )
-        coloane = st.columns([1.1, 1.1, 1.1, 1.4])
-        if mat is not None:
-            actiuni = (
-                ("Quiz", "quiz", "primary"),
-                ("Examen", "examen", "secondary"),
-                ("Flashcarduri", "carduri", "secondary"),
-            )
-            for col, (nume_s, cod, tip) in zip(coloane, actiuni):
-                col.button(
-                    nume_tab(nume_s),
-                    key=f"aca_h_{cod}",
-                    icon=f":material/{ICONITE.get(nume_s, 'apps')}:",
-                    on_click=mergi,
-                    args=(nume_s,),
-                    type=tip,
-                    use_container_width=True,
-                )
-        else:
-            coloane[0].button(
+        if mat is None:
+            col_buton, _liber = st.columns([1.2, 3])
+            col_buton.button(
                 t("ac.alege_material"),
                 key="aca_h_doc",
                 icon=":material/folder_open:",
@@ -127,61 +215,91 @@ def _hero(mat):
                 type="primary",
                 use_container_width=True,
             )
-            coloane[1].button(
-                t("ac.sat_fara_material"),
-                key="aca_h_sat",
-                icon=f":material/{ICONITE.get('SAT', 'school')}:",
-                on_click=mergi,
-                args=("SAT",),
-                use_container_width=True,
-            )
+        with st.container(key="aca_cards"):
+            coloane = st.columns(6, gap="small")
+            for col, (nume_s, cod, ic, c1, c2) in zip(coloane, CARDURI):
+                titlu_c = html.escape(nume_tab(nume_s))
+                cheie_desc = f"ac.c.{cod}.d"
+                desc = html.escape(t(cheie_desc))
+                with col:
+                    with st.container(key=f"aca_card_{cod}"):
+                        st.markdown(
+                            '<div class="aca-c">'
+                            f'<span class="aca-ci" style="background:linear-gradient(145deg,{c1},{c2})">'
+                            f"{_svg(ic, 22)}</span>"
+                            f'<div class="aca-ct">{titlu_c}</div>'
+                            f'<div class="aca-cd">{desc}</div></div>',
+                            unsafe_allow_html=True,
+                        )
+                        # butonul acoperă tot cardul (invizibil, vezi stil_tema.py)
+                        st.button(
+                            nume_tab(nume_s),
+                            key=f"aca_cb_{cod}",
+                            on_click=mergi,
+                            args=(nume_s,),
+                        )
 
 
-def _progres(toate):
+def _progres(toate, mat):
     user = utilizator_curent()
-    medie, quiz, examene, alte = _statistici(toate)
+    medie = _medie(toate)
+    medie_int = round(medie) if medie is not None else 0
 
     if user is None:
         mesaj = t("ac.vizitator_progres")
     elif not toate:
         mesaj = t("ac.fara_date")
-    elif medie >= 70:
+    elif medie_int >= 70:
         mesaj = t("ac.mesaj_bun")
     else:
         mesaj = t("ac.mesaj_incurajare")
 
-    randuri_html = (
-        (t("ac.quizuri"), quiz, "p1"),
-        (t("ac.examene"), examene, "p2"),
-        (t("ac.alte"), alte, "p3"),
-    )
-    lista = "".join(
-        f'<li><i class="aca-pct {c}"></i><span>{html.escape(n)}</span>'
-        f"<b>{v}</b></li>"
-        for n, v, c in randuri_html
-    )
     with st.container(key="aca_progres"):
         st.markdown(
-            f'<div class="aca-card-titlu">{html.escape(t("ac.progres"))}</div>'
-            '<div class="aca-prog">'
-            f'<div class="aca-inel" style="--p:{medie}"><div class="aca-inel-in">'
-            f'<b>{medie}%</b><span>{html.escape(t("ac.scor_mediu"))}</span>'
+            _titlu_card("trend", t("ac.progres"))
+            + f'<div class="aca-inel" style="--p:{medie_int}"><div class="aca-inel-in">'
+            f"<b>{medie_int}%</b><span>{html.escape(t('ac.rata'))}</span>"
             "</div></div>"
-            f'<ul class="aca-rows">{lista}</ul></div>'
-            f'<div class="aca-mesaj">{html.escape(mesaj)}</div>',
+            f'<div class="aca-mesaj aca-centru">{html.escape(mesaj)}</div>',
             unsafe_allow_html=True,
         )
+        st.button(
+            t("ac.continua"),
+            key="aca_continua",
+            icon=":material/star:",
+            on_click=mergi,
+            args=("Quiz" if mat is not None else "documente",),
+            use_container_width=True,
+        )
+
+
+def _rand_recent(r):
+    cod = r["sectiune"]
+    if cod == "preda":
+        sub = t("ac.puncte", s=r["scor"], n=r["total"])
+    else:
+        sub = t("ac.corecte", s=r["scor"], n=r["total"])
+    if cod == "quiz":
+        clasa, ic = "ri-q", "quiz"
+    elif cod == "examen":
+        clasa, ic = "ri-e", "check"
+    else:
+        clasa, ic = "ri-d", "doc"
+    nume = html.escape(_nume_tip(cod))
+    cand = html.escape(_timp(r.get("creat_la", "")))
+    return (
+        f'<li><span class="aca-ri {clasa}">{_svg(ic, 18)}</span>'
+        f'<div class="aca-rt"><b>{nume}</b><small>{html.escape(sub)}</small></div>'
+        f"<em>{cand}</em></li>"
+    )
 
 
 def _recent(toate):
     with st.container(key="aca_recent"):
         c1, c2 = st.columns([2, 1], vertical_alignment="center")
-        c1.markdown(
-            f'<div class="aca-card-titlu">{html.escape(t("ac.recent"))}</div>',
-            unsafe_allow_html=True,
-        )
+        c1.markdown(_titlu_card("clock", t("ac.recent")), unsafe_allow_html=True)
         c2.button(
-            t("ac.vezi_tot"),
+            f"{t('ac.vezi_toate')} →",
             key="aca_vezi_tot",
             on_click=mergi,
             args=("Progresul meu",),
@@ -194,32 +312,131 @@ def _recent(toate):
                 unsafe_allow_html=True,
             )
             return
-        lista = "".join(
-            '<li><i class="aca-dot"></i>'
-            f'<span>{html.escape(_nume_tip(r["sectiune"]))} · '
-            f'{r["scor"]}/{r["total"]}</span>'
-            f'<em>{html.escape(_timp(r.get("creat_la", "")))}</em></li>'
-            for r in ultimele
-        )
+        lista = "".join(_rand_recent(r) for r in ultimele)
         st.markdown(f'<ul class="aca-rec">{lista}</ul>', unsafe_allow_html=True)
 
 
 def _premium():
-    """Bandă discretă, nu un card mare."""
+    """Bannerul de Premium, cu avantajele reale din planul Premium."""
+    robot = imagine_uri("robot_premium.png")
+    img = f'<img class="aca-prem-robot" src="{robot}" alt="">' if robot else ""
+    avantaje = "".join(
+        f"<li>{html.escape(t(f'abon_av_premium_{n}'))}</li>" for n in (2, 3, 4, 6)
+    )
     with st.container(key="aca_premium"):
-        c1, c2 = st.columns([3, 1.2], vertical_alignment="center")
-        c1.markdown(
-            f'<div class="aca-prem-t">{html.escape(t("ac.prem.titlu"))}</div>'
-            f'<div class="aca-prem-d">{html.escape(t("ac.prem.text"))}</div>',
+        st.markdown(
+            '<div class="aca-pb">'
+            f'<div class="aca-pb-t"><span class="aca-coroana">{_svg("crown", 26, "#F5B83D", 1.6)}</span>'
+            f'{html.escape(t("ac.prem.banner"))}</div>'
+            f'<div class="aca-pb-s">{html.escape(t("ac.prem.banner_sub"))}</div>'
+            f'<ul class="aca-pb-l">{avantaje}</ul></div>{img}',
             unsafe_allow_html=True,
         )
-        if c2.button(
-            t("ac.prem.btn"),
+        col_buton, _liber = st.columns([1.6, 1.4])
+        if col_buton.button(
+            f"{t('ac.prem.titlu')} →",
             key="aca_prem_btn",
-            icon=":material/workspace_premium:",
+            type="primary",
             use_container_width=True,
         ):
             deschide_abonamente()
+        st.markdown(
+            f'<div class="aca-mesaj">{html.escape(t("abon_prototip_text"))}</div>',
+            unsafe_allow_html=True,
+        )
+
+
+def _tile(culoare, icoana, eticheta, valoare, trend=""):
+    return (
+        '<div class="aca-tile">'
+        f'<span class="aca-ti" style="background:{culoare}">{icoana}</span>'
+        f'<div><div class="aca-tl">{html.escape(eticheta)}</div>'
+        f'<div class="aca-tv">{valoare}{trend}</div></div></div>'
+    )
+
+
+def _stats(toate):
+    curente, precedente = _perioade(toate)
+
+    var_nr = None
+    if precedente:
+        var_nr = round(100 * (len(curente) - len(precedente)) / len(precedente))
+    trend_nr = _trend(var_nr, f"{var_nr:+d}%") if var_nr is not None else ""
+
+    medie = _medie(toate)
+    m_cur, m_prec = _medie(curente), _medie(precedente)
+    trend_medie = ""
+    if m_cur is not None and m_prec is not None:
+        dif = round(m_cur - m_prec, 1)
+        trend_medie = _trend(dif, _num(dif) + "%" if dif == 0 else f"{'+' if dif > 0 else ''}{_num(dif)}%")
+
+    serie = _serie(toate)
+    text_serie = t("ac.zi_unu") if serie == 1 else t("ac.zile", n=serie)
+    text_medie = f"{_num(medie)}%" if medie is not None else "—"
+
+    tiles = (
+        _tile(
+            "rgba(31,163,92,0.25)",
+            _svg("check", 22, "#3FD58A", 2.4),
+            t("ac.stat.activitati"),
+            str(len(toate)),
+            trend_nr,
+        )
+        + _tile(
+            "rgba(245,184,61,0.18)",
+            _svg("trofeu", 22),
+            t("ac.stat.media"),
+            html.escape(text_medie),
+            trend_medie,
+        )
+        + _tile(
+            "rgba(139,92,246,0.25)",
+            _svg("bolt", 22, "#B58BFF", 2),
+            t("ac.stat.serie"),
+            html.escape(text_serie),
+        )
+    )
+    with st.container(key="aca_stats"):
+        st.markdown(
+            _titlu_card("bars", t("ac.stat.titlu"))
+            + f'<div class="aca-grila">{tiles}</div>',
+            unsafe_allow_html=True,
+        )
+
+
+def _obiectiv(toate, mat):
+    try:
+        tinta = int(obiectiv_zilnic())
+    except Exception:
+        tinta = 2
+    azi = pd.Timestamp.now(tz=BUC).date()
+    facute = sum(1 for r in toate if _zi(r.get("creat_la")) == azi)
+    procent = min(100, round(100 * facute / tinta)) if tinta else 0
+    if facute >= tinta:
+        mesaj = t("ob.atins")
+    else:
+        ramase = tinta - facute
+        cuvant = t("ob.activitate") if ramase == 1 else t("ob.activitati")
+        mesaj = t("ob.ramase", r=ramase, cuvant=cuvant)
+
+    with st.container(key="aca_obiectiv"):
+        st.markdown(
+            _titlu_card("cal", t("ac.obiectiv.titlu"))
+            + '<div class="aca-ob">'
+            f'<span class="aca-ob-ic">{_svg("cal", 34, "#B58BFF", 1.6)}</span>'
+            f'<div><div class="aca-ob-t">{html.escape(t("ac.obiectiv.progres", c=facute, n=tinta))}</div>'
+            f'<div class="aca-bara"><i style="width:{procent}%"></i></div>'
+            f'<div class="aca-mesaj">{html.escape(mesaj)}</div></div></div>',
+            unsafe_allow_html=True,
+        )
+        st.button(
+            f"{t('ac.incepe_acum')} →",
+            key="aca_incepe_acum",
+            on_click=mergi,
+            args=("Quiz" if mat is not None else "documente",),
+            type="primary",
+            use_container_width=True,
+        )
 
 
 def afiseaza_acasa(mat=None):
@@ -227,10 +444,21 @@ def afiseaza_acasa(mat=None):
     # marcaj: CSS-ul lărgește pagina doar când acest element există
     st.markdown('<div class="aca-marker"></div>', unsafe_allow_html=True)
     toate = _randuri()
-    _hero(mat)
-    c1, c2 = st.columns([1, 1.25], gap="large")
-    with c1:
-        _progres(toate)
-    with c2:
+
+    stanga, dreapta = st.columns([2.6, 1], gap="large")
+    with stanga:
+        _hero(mat)
+    with dreapta:
+        _progres(toate, mat)
+
+    r1, r2 = st.columns([1, 1.35], gap="large")
+    with r1:
         _recent(toate)
-    _premium()
+    with r2:
+        _premium()
+
+    r3, r4 = st.columns([2.3, 1], gap="large")
+    with r3:
+        _stats(toate)
+    with r4:
+        _obiectiv(toate, mat)
