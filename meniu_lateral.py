@@ -1,4 +1,5 @@
-"""Meniul din stânga: logo, profil, grupurile de secțiuni și Premium."""
+"""Meniul din stânga: logo, profil, Acasă, categoriile pliabile de secțiuni,
+Documente și o notă discretă despre Premium."""
 
 import html
 
@@ -11,16 +12,16 @@ from utile_pagini import logo_uri, mergi
 
 
 def _grupe(sectiuni):
-    """Grupurile din navigare.py, cu numele secțiunilor care există."""
+    """Grupurile din navigare.py: (cod, iconiță, numele secțiunilor existente)."""
     grupe, folosite = [], set()
-    for cod, _icoana, nume_membri in GRUPE:
+    for cod, icoana, nume_membri in GRUPE:
         membri = [s["nume"] for n in nume_membri for s in sectiuni if s["nume"] == n]
         if membri:
-            grupe.append((cod, membri))
+            grupe.append((cod, icoana, membri))
             folosite.update(membri)
     ramase = [s["nume"] for s in sectiuni if s["nume"] not in folosite]
     if ramase:
-        grupe.append(("altele", ramase))
+        grupe.append(("altele", "apps", ramase))
     return grupe
 
 
@@ -34,6 +35,15 @@ def _buton(cheie, eticheta, icoana, pagina, curenta):
         type="primary" if pagina == curenta else "secondary",
         use_container_width=True,
     )
+
+
+def _categorie(eticheta, deschis, icoana):
+    """Categorie pliabilă. Dacă versiunea de Streamlit nu știe iconița pe
+    expander, se folosește fără iconiță."""
+    try:
+        return st.expander(eticheta, expanded=deschis, icon=f":material/{icoana}:")
+    except TypeError:
+        return st.expander(eticheta, expanded=deschis)
 
 
 def deseneaza_meniu(sectiuni, curenta, deseneaza_profil):
@@ -50,20 +60,19 @@ def deseneaza_meniu(sectiuni, curenta, deseneaza_profil):
 
         with st.container(key="meniu_lateral"):
             _buton("acasa", t("ac.nav.acasa"), "home", "acasa", curenta)
-            for i_grup, (cod, nume_lista) in enumerate(_grupe(sectiuni)):
-                st.markdown(
-                    f'<div class="meniu-grup">{html.escape(t(f"nav.grupa.{cod}"))}</div>',
-                    unsafe_allow_html=True,
-                )
-                for i, nume in enumerate(nume_lista):
-                    _buton(
-                        f"s{i_grup}_{i}",
-                        nume_tab(nume),
-                        ICONITE.get(nume, "apps"),
-                        nume,
-                        curenta,
-                    )
-            st.markdown('<div class="meniu-grup"></div>', unsafe_allow_html=True)
+            for i_grup, (cod, icoana, nume_lista) in enumerate(_grupe(sectiuni)):
+                with st.container(key=f"grup_{cod}"):
+                    with _categorie(
+                        t(f"nav.grupa.{cod}"), curenta in nume_lista, icoana
+                    ):
+                        for i, nume in enumerate(nume_lista):
+                            _buton(
+                                f"s{i_grup}_{i}",
+                                nume_tab(nume),
+                                ICONITE.get(nume, "apps"),
+                                nume,
+                                curenta,
+                            )
             _buton(
                 "documente",
                 t("ac.nav.documente"),
@@ -74,7 +83,7 @@ def deseneaza_meniu(sectiuni, curenta, deseneaza_profil):
 
         with st.container(key="meniu_premium"):
             st.markdown(
-                f'<div class="aca-prem-t">{html.escape(t("ac.prem.titlu"))}</div>',
+                f'<div class="meniu-prem-t">{html.escape(t("ac.prem.titlu"))}</div>',
                 unsafe_allow_html=True,
             )
             if st.button(
