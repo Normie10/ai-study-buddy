@@ -438,5 +438,9 @@ TEXTE.update(TEXTE_HARTA)
 
 from texte_acasa import TEXTE_ACASA
 TEXTE.update(TEXTE_ACASA)
+
 from texte_plan import TEXTE_PLAN
 TEXTE.update(TEXTE_PLAN)
+
+from texte_tema import TEXTE_TEMA
+TEXTE.update(TEXTE_TEMA)
