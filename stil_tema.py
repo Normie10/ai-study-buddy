@@ -515,3 +515,5 @@ div.st-key-abon_premium_curent button:disabled {
 }
 </style>
 """
+from stil_corecturi_acasa import CSS_CORECTURI_ACASA
+CSS_TEMA = CSS_TEMA + CSS_CORECTURI_ACASA
