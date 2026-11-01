@@ -92,7 +92,7 @@ from navigare import NUME_CUNOSCUTE  # noqa: E402
 from obiectiv_zilnic import afiseaza_obiectiv  # noqa: E402
 from pagina_acasa import afiseaza_acasa  # noqa: E402
 from stil_notificari import CSS_NOTIFICARI  # noqa: E402
-from stil_tema import CSS_TEMA  # noqa: E402
+from stil_tema import css_tema  # noqa: E402
 from stil_ui import CSS_UI  # noqa: E402
 from taburi import (  # noqa: E402
     Context,
@@ -115,7 +115,7 @@ load_dotenv()
 st.markdown(CSS_APP, unsafe_allow_html=True)
 st.markdown(CSS_NOTIFICARI, unsafe_allow_html=True)
 st.markdown(CSS_UI, unsafe_allow_html=True)
-st.markdown(CSS_TEMA, unsafe_allow_html=True)
+st.markdown(css_tema(), unsafe_allow_html=True)
 
 # Valorile interne ale alegerii sursei (nu se traduc: logica se bazează pe ele)
 SURSA_FISIER = "Încarcă un fișier"
