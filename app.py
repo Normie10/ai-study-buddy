@@ -116,6 +116,8 @@ st.markdown(CSS_APP, unsafe_allow_html=True)
 st.markdown(CSS_NOTIFICARI, unsafe_allow_html=True)
 st.markdown(CSS_UI, unsafe_allow_html=True)
 st.markdown(css_tema(), unsafe_allow_html=True)
+_t = getattr(st.context, "theme", None)
+st.caption(f"DIAG v{st.__version__} base={getattr(_t,'base','-')} type={getattr(_t,'type','-')}")
 
 # Valorile interne ale alegerii sursei (nu se traduc: logica se bazează pe ele)
 SURSA_FISIER = "Încarcă un fișier"
