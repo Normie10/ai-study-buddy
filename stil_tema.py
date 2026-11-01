@@ -1,44 +1,106 @@
-"""Tema violet închis: fundal aproape negru, accente violet și magenta discrete,
-meniu lateral cu categorii pliabile, pagina Acasă după modelul ales. Se
-încarcă după celelalte stiluri și le suprascrie."""
+"""Tema AI Study Buddy, în două moduri: luminos și întunecat.
 
-CSS_TEMA = """
-<style>
+Culorile de bază (fundal, text, câmpuri, grafice) vin din .streamlit/config.toml
+([theme.light] și [theme.dark]). Aici sunt doar stilurile noastre: meniul,
+pagina Acasă, cardurile. Modul activ se află cu st.context.theme; dacă nu se
+poate afla, se folosește modul întunecat (aspectul de până acum).
+Se încarcă ultimul, ca să suprascrie celelalte stiluri."""
+
+import streamlit as st
+
+
+def mod_curent():
+    """'light' sau 'dark'. Dacă Streamlit nu spune, 'dark'."""
+    try:
+        tema = st.context.theme
+        valoare = getattr(tema, "base", None) or getattr(tema, "type", None)
+        if valoare in ("light", "dark"):
+            return valoare
+    except Exception:
+        pass
+    return "dark"
+
+
+# ---------- variabilele care diferă între moduri ----------
+_VARS_INTUNECAT = """
+:root {
+    --accent-text: #B58BFF;
+    --accent-text-2: #C4B5FD;
+    --activ-text: #FFFFFF;
+    --camp-bg: #100D20;
+    --panou: rgba(255, 255, 255, 0.025);
+    --card-sus: 0.18;
+    --card-jos: 0.04;
+    --glow: rgba(139, 92, 246, 0.14);
+    --sombra: none;
+    --ok: #3FD58A;
+    --bad: #FF6B81;
+}
+[data-testid="stApp"] { background-color: #08070F !important; }
+[data-testid="stSidebar"] { background: #0B0914 !important; }
+"""
+
+_VARS_LUMINOS = """
+:root {
+    --accent-text: #6D3FD8;
+    --accent-text-2: #5B34C2;
+    --activ-text: #3F1FA8;
+    --camp-bg: #FFFFFF;
+    --panou: #FFFFFF;
+    --card-sus: 0.26;
+    --card-jos: 0.12;
+    --glow: rgba(139, 92, 246, 0.16);
+    --sombra: 0 4px 18px rgba(80, 60, 160, 0.08);
+    --ok: #15803D;
+    --bad: #DC2626;
+}
+[data-testid="stApp"] { background-color: #F6F3FF !important; }
+[data-testid="stSidebar"] { background: #FBFAFF !important; }
+/* robotul din imaginea de referință e făcut pentru fundal închis:
+   în modul luminos îl ascundem până avem o variantă luminoasă */
+.aca-robot, .meniu-robot { display: none !important; }
+.aca-hero-text { max-width: 75% !important; }
+"""
+
+# ---------- stilul comun ----------
+_BAZA = """
 @keyframes urca {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: none; }
 }
 
-/* ---------- Culorile temei ---------- */
 :root {
     --accent: #8B5CF6;
     --accent-soft: rgba(139, 92, 246, 0.12);
-    --accent-glow: rgba(139, 92, 246, 0.22);
-    --border: #251F42;
-    --border-hover: #3B3268;
-    --surface: rgba(255, 255, 255, 0.025);
-    --muted: #9D9AB6;
+    --border: color-mix(in srgb, currentColor 14%, transparent);
+    --border-hover: color-mix(in srgb, currentColor 28%, transparent);
+    --muted: color-mix(in srgb, currentColor 62%, transparent);
 }
 ::selection { background: rgba(139, 92, 246, 0.35); }
 
 [data-testid="stApp"] {
-    background:
-        radial-gradient(900px 480px at 85% -8%, rgba(139, 92, 246, 0.10), transparent 60%),
-        #08070F !important;
+    background-image:
+        radial-gradient(900px 480px at 85% -8%, var(--glow), transparent 60%) !important;
 }
 [data-testid="stAppViewContainer"],
 [data-testid="stMain"] {
     background: transparent !important;
 }
 [data-testid="stSidebar"] {
-    background: #0B0914 !important;
     border-right: 1px solid var(--border);
 }
+
+/* bara de sus: păstrăm meniul Streamlit (de acolo se schimbă modul) */
 [data-testid="stHeader"] {
     display: flex !important;
     background: transparent !important;
 }
-[data-testid="stToolbar"],
+[data-testid="stToolbar"] {
+    display: flex !important;
+    visibility: visible !important;
+}
+[data-testid="stAppDeployButton"],
+[data-testid="stStatusWidget"],
 [data-testid="stDecoration"] {
     display: none !important;
 }
@@ -46,7 +108,7 @@ CSS_TEMA = """
 [data-baseweb="select"] > div,
 [data-baseweb="input"],
 [data-baseweb="textarea"] {
-    background-color: #100D20 !important;
+    background-color: var(--camp-bg) !important;
 }
 
 /* ---------- Butoane: plate, fără strălucire ---------- */
@@ -94,7 +156,7 @@ button[data-testid="baseButton-secondaryFormSubmit"]:hover {
     font-weight: 800;
     letter-spacing: -0.02em;
 }
-.brand-nume b { color: #C4B5FD; }
+.brand-nume b { color: var(--accent-text); }
 
 div[class*="st-key-profil_lateral"] [data-testid="stPopover"],
 div[class*="st-key-profil_lateral"] button {
@@ -128,19 +190,18 @@ div[class*="st-key-meniu_lateral"] button[data-testid="baseButton-secondary"] {
     background: transparent !important;
     border: 1px solid transparent !important;
     box-shadow: none !important;
-    color: #CFCCE6 !important;
 }
 div[class*="st-key-meniu_lateral"] button[data-testid="stBaseButton-secondary"]:hover,
 div[class*="st-key-meniu_lateral"] button[data-testid="baseButton-secondary"]:hover {
     background: rgba(139, 92, 246, 0.10) !important;
     border-color: transparent !important;
-    color: #FFFFFF !important;
+    color: var(--accent-text) !important;
 }
 div[class*="st-key-meniu_lateral"] button[data-testid="stBaseButton-primary"],
 div[class*="st-key-meniu_lateral"] button[data-testid="baseButton-primary"] {
     background: rgba(139, 92, 246, 0.18) !important;
     border: 1px solid rgba(139, 92, 246, 0.45) !important;
-    color: #FFFFFF !important;
+    color: var(--activ-text) !important;
     box-shadow: none !important;
 }
 
@@ -153,11 +214,10 @@ div[class*="st-key-meniu_lateral"] button[data-testid="baseButton-primary"] {
     padding: 0.55rem 0.7rem;
     border-radius: 10px;
     font-weight: 700;
-    color: #E6E3F7;
 }
 [data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {
     background: rgba(139, 92, 246, 0.10);
-    color: #FFFFFF;
+    color: var(--accent-text);
 }
 [data-testid="stSidebar"] [data-testid="stExpanderDetails"] {
     padding: 0.2rem 0 0.4rem 0.5rem;
@@ -168,14 +228,14 @@ div[class*="st-key-meniu_premium"] {
     padding: 0.85rem;
     border: 1px solid rgba(139, 92, 246, 0.5);
     border-radius: 12px;
-    background: linear-gradient(135deg, rgba(109, 74, 224, 0.35), rgba(217, 70, 239, 0.12));
+    background: linear-gradient(135deg, rgba(109, 74, 224, 0.30), rgba(217, 70, 239, 0.10));
 }
 .meniu-prem-t { font-size: 0.95rem; font-weight: 700; }
-.meniu-prem-d { margin: 0.1rem 0 0.4rem; color: #CFCCE6; font-size: 0.78rem; }
+.meniu-prem-d { margin: 0.1rem 0 0.4rem; color: var(--muted); font-size: 0.78rem; }
 .meniu-robot {
     display: block;
     width: 100%;
-    max-width: 190px;
+    max-width: 150px;
     margin: 1rem auto 0;
 }
 
@@ -199,7 +259,6 @@ div[class*="st-key-meniu_premium"] {
     gap: 1.6rem;
 }
 
-/* rânduri cu înălțimi cât mai egale (cât permite Streamlit) */
 div[data-testid="stHorizontalBlock"]:has(.st-key-aca_progres),
 div[data-testid="stHorizontalBlock"]:has(.st-key-aca_recent),
 div[data-testid="stHorizontalBlock"]:has(.st-key-aca_stats) {
@@ -212,8 +271,9 @@ div[class*="st-key-aca_stats"],
 div[class*="st-key-aca_obiectiv"] {
     height: 100%;
 }
+div[class*="st-key-aca_recent"],
+div[class*="st-key-aca_premium"] { min-height: 21.5rem; }
 
-/* titlul unui card, cu iconiță */
 .aca-ch { display: flex; align-items: center; gap: 0.6rem; }
 .aca-chi { display: inline-flex; }
 .aca-card-titlu { font-size: 1.1rem; font-weight: 700; }
@@ -224,7 +284,7 @@ div[class*="st-key-aca_obiectiv"] {
 div[class*="st-key-aca_hero"] {
     position: relative;
     padding: 0.4rem 0 0;
-    background: radial-gradient(ellipse at 78% 18%, rgba(139, 92, 246, 0.16), transparent 62%);
+    background: radial-gradient(closest-side at 82% 38%, var(--glow), transparent);
     animation: urca 0.5s ease backwards;
 }
 .aca-hero-text { max-width: 58%; padding-top: 1.2rem; min-height: 10.5rem; }
@@ -234,8 +294,12 @@ div[class*="st-key-aca_hero"] {
     letter-spacing: -0.03em;
     line-height: 1.1;
 }
-.aca-nume { color: #B58BFF; }
-.aca-sub { margin-top: 0.5rem; color: #D6D3EA; font-size: 1.05rem; }
+.aca-nume { color: var(--accent-text); }
+.aca-sub {
+    margin-top: 0.5rem;
+    color: color-mix(in srgb, currentColor 82%, transparent);
+    font-size: 1.05rem;
+}
 .aca-material { margin-top: 0.6rem; color: var(--muted); font-size: 0.88rem; }
 .aca-robot {
     position: absolute;
@@ -255,16 +319,20 @@ div[class*="st-key-aca_cards"] {
 }
 div[class*="st-key-aca_card_"] {
     position: relative;
-    padding: 0.95rem 0.85rem 0.9rem;
+    min-height: 9.6rem;
+    padding: 0.95rem 0.85rem 1.1rem;
     border-radius: 16px;
-    border: 1px solid rgba(var(--c), 0.38);
-    background: linear-gradient(160deg, rgba(var(--c), 0.16), rgba(14, 11, 32, 0.78) 70%);
+    border: 1px solid rgba(var(--c), 0.40);
+    background: linear-gradient(
+        160deg, rgba(var(--c), var(--card-sus)), rgba(var(--c), var(--card-jos)) 80%
+    );
+    box-shadow: var(--sombra);
     cursor: pointer;
     transition: transform 0.2s ease, border-color 0.2s ease;
 }
 div[class*="st-key-aca_card_"]:hover {
     transform: translateY(-3px);
-    border-color: rgba(var(--c), 0.75);
+    border-color: rgba(var(--c), 0.80);
 }
 div[class*="st-key-aca_card_"]:has(button:focus-visible) {
     outline: 2px solid #A78BFA;
@@ -302,7 +370,13 @@ div[class*="st-key-aca_card_"] [data-testid="stMarkdownContainer"] p { margin: 0
     border-radius: 12px;
 }
 .aca-ct { margin-top: 0.7rem; font-weight: 700; font-size: 0.98rem; }
-.aca-cd { margin-top: 0.15rem; color: var(--muted); font-size: 0.74rem; line-height: 1.35; }
+.aca-cd {
+    margin-top: 0.15rem;
+    min-height: 2.7em;
+    color: var(--muted);
+    font-size: 0.76rem;
+    line-height: 1.35;
+}
 
 /* ----- carduri generale ----- */
 div[class*="st-key-aca_progres"],
@@ -312,31 +386,37 @@ div[class*="st-key-aca_obiectiv"] {
     padding: 1.4rem 1.5rem;
     border: 1px solid var(--border);
     border-radius: 18px;
-    background: rgba(255, 255, 255, 0.025);
+    background: var(--panou);
+    box-shadow: var(--sombra);
     animation: urca 0.5s ease 0.08s backwards;
 }
 
-/* ----- progres ----- */
+/* ----- progres: inelul e desenat cu mască, ca să nu depindă de culoarea fundalului ----- */
 .aca-inel {
+    position: relative;
     display: grid;
     place-items: center;
     width: 150px;
     height: 150px;
     margin: 1.1rem auto 0.4rem;
+}
+.aca-inel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
     border-radius: 50%;
     background: conic-gradient(
-        #2DD4BF 0, #8B5CF6 calc(var(--p) * 1%), rgba(139, 92, 246, 0.14) 0
+        #2DD4BF 0, #8B5CF6 calc(var(--p) * 1%), rgba(139, 92, 246, 0.16) 0
     );
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 15px), #000 calc(100% - 14px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 15px), #000 calc(100% - 14px));
 }
 .aca-inel-in {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    background: #0E0B1D;
 }
 .aca-inel-in b { font-size: 2rem; line-height: 1.1; }
 .aca-inel-in span { color: var(--muted); font-size: 0.74rem; }
@@ -344,7 +424,7 @@ div[class*="st-key-aca_progres"] button {
     min-height: 3rem;
     background: rgba(139, 92, 246, 0.14) !important;
     border: 1px solid rgba(139, 92, 246, 0.4) !important;
-    color: #C4B5FD !important;
+    color: var(--accent-text-2) !important;
 }
 
 /* ----- activitate recentă ----- */
@@ -352,7 +432,7 @@ div[class*="st-key-aca_recent"] button {
     background: transparent !important;
     border: 0 !important;
     box-shadow: none !important;
-    color: #A78BFA !important;
+    color: var(--accent-text) !important;
     justify-content: flex-end !important;
 }
 .aca-rec { margin: 0.4rem 0 0; padding: 0; list-style: none; }
@@ -380,7 +460,7 @@ div[class*="st-key-aca_recent"] button {
 .aca-rt small { color: var(--muted); font-size: 0.8rem; }
 .aca-rec li em { color: var(--muted); font-size: 0.8rem; font-style: normal; }
 
-/* ----- banner Premium ----- */
+/* ----- banner Premium: la fel în ambele moduri (fundal violet, text alb) ----- */
 div[class*="st-key-aca_premium"] {
     position: relative;
     overflow: hidden;
@@ -392,10 +472,14 @@ div[class*="st-key-aca_premium"] {
         linear-gradient(100deg, #1D0D2E 0%, #260F3A 55%, #2A1062 100%);
     animation: urca 0.5s ease 0.12s backwards;
 }
+div[class*="st-key-aca_premium"] [data-testid="stMarkdownContainer"] {
+    color: #FFFFFF !important;
+}
+div[class*="st-key-aca_premium"] .aca-mesaj { color: rgba(255, 255, 255, 0.6) !important; }
 .aca-pb { max-width: 56%; }
 .aca-pb-t { display: flex; align-items: center; gap: 0.6rem; font-size: 1.35rem; font-weight: 800; }
 .aca-coroana { display: inline-flex; }
-.aca-pb-s { margin-top: 0.5rem; color: #D6D3EA; font-size: 0.95rem; }
+.aca-pb-s { margin-top: 0.5rem; color: rgba(255, 255, 255, 0.85); font-size: 0.95rem; }
 .aca-pb-l { margin: 0.7rem 0 0.3rem; padding: 0; list-style: none; }
 .aca-pb-l li {
     display: flex;
@@ -446,7 +530,7 @@ div[class*="st-key-aca_premium"] button {
     padding: 0.9rem 1rem;
     border: 1px solid var(--border);
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.03);
+    background: color-mix(in srgb, currentColor 3%, transparent);
 }
 .aca-ti {
     flex-shrink: 0;
@@ -459,8 +543,8 @@ div[class*="st-key-aca_premium"] button {
 .aca-tl { color: var(--muted); font-size: 0.82rem; }
 .aca-tv { margin-top: 0.1rem; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
 .aca-tr { margin-left: 0.6rem; font-size: 0.78rem; font-weight: 600; }
-.aca-tr.sus { color: #3FD58A; }
-.aca-tr.jos { color: #FF6B81; }
+.aca-tr.sus { color: var(--ok); }
+.aca-tr.jos { color: var(--bad); }
 .aca-tr.egal { color: var(--muted); }
 
 /* ----- obiectiv de azi ----- */
@@ -498,12 +582,16 @@ div[class*="st-key-aca_premium"] button {
 .planuri .plan.plan-premium:hover { border-color: #8B5CF6; }
 div.st-key-abon_premium_curent button:disabled {
     border-color: rgba(139, 92, 246, 0.5) !important;
-    color: #C4B5FD !important;
+    color: var(--accent-text-2) !important;
 }
 
 /* ---------- Ecrane mici ---------- */
+@media (min-width: 761px) {
+    .aca-hero-text { min-height: 12.5rem; }
+    .aca-robot { width: 240px; top: -6px; }
+}
 @media (max-width: 760px) {
-    .aca-hero-text { max-width: 100%; min-height: 0; }
+    .aca-hero-text { max-width: 100% !important; min-height: 0; }
     .aca-robot, .aca-prem-robot { display: none; }
     .aca-pb { max-width: 100%; }
     .aca-grila { grid-template-columns: 1fr; }
@@ -513,7 +601,16 @@ div.st-key-abon_premium_curent button:disabled {
         min-width: calc(50% - 0.6rem) !important;
     }
 }
-</style>
 """
-from stil_corecturi_acasa import CSS_CORECTURI_ACASA
-CSS_TEMA = CSS_TEMA + CSS_CORECTURI_ACASA
+
+
+def css_tema(mod=None):
+    """CSS-ul temei pentru modul activ (sau pentru cel dat)."""
+    if mod is None:
+        mod = mod_curent()
+    variabile = _VARS_LUMINOS if mod == "light" else _VARS_INTUNECAT
+    return "<style>" + variabile + _BAZA + "</style>"
+
+
+# păstrat ca să nu se strice importurile vechi (varianta întunecată)
+CSS_TEMA = css_tema("dark")
