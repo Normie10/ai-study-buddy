@@ -92,6 +92,7 @@ from navigare import NUME_CUNOSCUTE  # noqa: E402
 from obiectiv_zilnic import afiseaza_obiectiv  # noqa: E402
 from pagina_acasa import afiseaza_acasa  # noqa: E402
 from stil_notificari import CSS_NOTIFICARI  # noqa: E402
+from comutator_mod import deseneaza_comutator, mod_ui  # noqa: E402
 from stil_tema import css_tema  # noqa: E402
 from stil_ui import CSS_UI  # noqa: E402
 from taburi import (  # noqa: E402
@@ -115,7 +116,8 @@ load_dotenv()
 st.markdown(CSS_APP, unsafe_allow_html=True)
 st.markdown(CSS_NOTIFICARI, unsafe_allow_html=True)
 st.markdown(CSS_UI, unsafe_allow_html=True)
-st.markdown(css_tema(), unsafe_allow_html=True)
+st.markdown(css_tema(mod_ui()), unsafe_allow_html=True)
+deseneaza_comutator()
 _t = getattr(st.context, "theme", None)
 st.caption(f"DIAG v{st.__version__} base={getattr(_t,'base','-')} type={getattr(_t,'type','-')}")
 
