@@ -1,29 +1,19 @@
-"""Tema AI Study Buddy, în două moduri: luminos și întunecat.
+"""Tema AI Study Buddy, în două moduri: întunecat și luminos.
 
-Culorile de bază (fundal, text, câmpuri, grafice) vin din .streamlit/config.toml
-([theme.light] și [theme.dark]). Aici sunt doar stilurile noastre: meniul,
-pagina Acasă, cardurile. Modul activ se află cu st.context.theme; dacă nu se
-poate afla, se folosește modul întunecat (aspectul de până acum).
-Se încarcă ultimul, ca să suprascrie celelalte stiluri."""
-
-import streamlit as st
-
-
-def mod_curent():
-    """'light' sau 'dark'. Dacă Streamlit nu spune, 'dark'."""
-    try:
-        tema = st.context.theme
-        valoare = getattr(tema, "base", None) or getattr(tema, "type", None)
-        if valoare in ("light", "dark"):
-            return valoare
-    except Exception:
-        pass
-    return "dark"
-
+Tema nativă Streamlit (din .streamlit/config.toml) rămâne mereu cea întunecată.
+Modul luminos e un strat de CSS pus peste ea (_SKIN_LUMINOS), pornit de
+butonul din colțul de sus (comutator_mod.py). Se încarcă ultimul, ca să
+suprascrie celelalte stiluri."""
 
 # ---------- variabilele care diferă între moduri ----------
 _VARS_INTUNECAT = """
 :root {
+    --txt: #FAFAFA;
+    --txt-2: #D6D3EA;
+    --border: #251F42;
+    --border-hover: #3B3268;
+    --surface: rgba(255, 255, 255, 0.025);
+    --muted: #9D9AB6;
     --accent-text: #B58BFF;
     --accent-text-2: #C4B5FD;
     --activ-text: #FFFFFF;
@@ -42,6 +32,12 @@ _VARS_INTUNECAT = """
 
 _VARS_LUMINOS = """
 :root {
+    --txt: #1E1838;
+    --txt-2: #3D3560;
+    --border: #E3DCF7;
+    --border-hover: #CFC4F0;
+    --surface: rgba(30, 24, 56, 0.04);
+    --muted: #6B6585;
     --accent-text: #6D3FD8;
     --accent-text-2: #5B34C2;
     --activ-text: #3F1FA8;
@@ -56,6 +52,79 @@ _VARS_LUMINOS = """
 }
 [data-testid="stApp"] { background-color: #F6F3FF !important; }
 [data-testid="stSidebar"] { background: #FBFAFF !important; }
+"""
+
+# ---------- stratul pentru modul luminos (peste tema nativă întunecată) ----------
+_SKIN_LUMINOS = """
+/* text: Streamlit îl dă alb; îl facem închis, fără să atingem butoanele,
+   bannerul Premium și descrierile mici */
+[data-testid="stApp"], [data-testid="stSidebar"] { color: var(--txt) !important; }
+[data-testid="stApp"] :is(p, li, label, summary, h1, h2, h3, h4, h5, h6, th, td,
+    [data-testid="stMarkdownContainer"], [data-testid="stWidgetLabel"],
+    [data-testid="stMetricValue"], [data-testid="stMetricLabel"]):not(button *):not(div[class*="st-key-aca_premium"] *):not([data-testid="stCaptionContainer"] *) {
+    color: var(--txt) !important;
+}
+[data-testid="stPopoverBody"],
+[data-testid="stPopoverBody"] :is(p, li, label, h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"], [data-testid="stWidgetLabel"], [data-testid="stMetricValue"]) {
+    color: var(--txt) !important;
+}
+[data-testid="stPopoverBody"] { background: #FFFFFF !important; }
+[data-testid="stMetricLabel"], [data-testid="stMetricLabel"] * { color: var(--muted) !important; }
+
+/* butoane secundare și butonul de profil */
+button[data-testid="stBaseButton-secondary"],
+button[data-testid="stBaseButton-secondaryFormSubmit"],
+button[data-testid="baseButton-secondary"],
+button[data-testid="baseButton-secondaryFormSubmit"],
+[data-testid="stPopoverButton"] {
+    background-color: #FFFFFF !important;
+    color: var(--txt) !important;
+    border: 1px solid var(--border-hover) !important;
+}
+
+/* câmpuri de text, liste, meniuri care se deschid */
+[data-baseweb="input"], [data-baseweb="base-input"], [data-baseweb="textarea"],
+[data-baseweb="select"] > div {
+    background-color: #FFFFFF !important;
+    border-color: var(--border-hover) !important;
+}
+[data-baseweb="input"] input, [data-baseweb="textarea"] textarea,
+[data-baseweb="select"] input, [data-baseweb="select"] div, [data-baseweb="select"] span {
+    color: var(--txt) !important;
+    -webkit-text-fill-color: var(--txt) !important;
+}
+input::placeholder, textarea::placeholder { color: var(--muted) !important; -webkit-text-fill-color: var(--muted) !important; }
+[data-baseweb="popover"] [data-baseweb="menu"], [data-baseweb="popover"] ul {
+    background: #FFFFFF !important;
+}
+[data-baseweb="popover"] li, [data-baseweb="popover"] li * { color: var(--txt) !important; }
+[data-baseweb="popover"] li:hover { background: rgba(139, 92, 246, 0.10) !important; }
+
+/* încărcare fișier, taburi, răspunsuri */
+[data-testid="stFileUploaderDropzone"], [data-testid="stFileUploaderDropzone"] small,
+[data-testid="stFileUploaderDropzoneInstructions"] * { color: var(--muted) !important; }
+[data-testid="stTabs"] button[role="tab"]:hover {
+    color: var(--accent-text) !important;
+    background-color: rgba(139, 92, 246, 0.08) !important;
+}
+[data-testid="stRadio"] div[role="radiogroup"] > label:hover {
+    background: rgba(139, 92, 246, 0.06) !important;
+}
+::-webkit-scrollbar-thumb { background: #CFC4F0; background-clip: content-box; }
+
+/* notificările și cronometrul plutitor: carduri albe în loc de negre */
+[data-testid="stSpinner"],
+div[class*="st-key-cronometru_fix"],
+div[class*="st-key-avert_salvare"]:has([data-testid="stAlert"]) {
+    background: #FFFFFF !important;
+    border-color: var(--border-hover) !important;
+    box-shadow: 0 12px 32px rgba(80, 60, 160, 0.18) !important;
+}
+[data-testid="stSpinner"]::before {
+    border-color: rgba(109, 74, 224, 0.25);
+    border-top-color: #6D4AE0;
+}
+
 /* robotul din imaginea de referință e făcut pentru fundal închis:
    în modul luminos îl ascundem până avem o variantă luminoasă */
 .aca-robot, .meniu-robot { display: none !important; }
@@ -72,9 +141,7 @@ _BAZA = """
 :root {
     --accent: #8B5CF6;
     --accent-soft: rgba(139, 92, 246, 0.12);
-    --border: color-mix(in srgb, currentColor 14%, transparent);
-    --border-hover: color-mix(in srgb, currentColor 28%, transparent);
-    --muted: color-mix(in srgb, currentColor 62%, transparent);
+    --accent-glow: rgba(139, 92, 246, 0.22);
 }
 ::selection { background: rgba(139, 92, 246, 0.35); }
 
@@ -90,20 +157,39 @@ _BAZA = """
     border-right: 1px solid var(--border);
 }
 
-/* bara de sus: păstrăm meniul Streamlit (de acolo se schimbă modul) */
+/* bara de sus a Streamlit: scoasă (rămâne doar săgeata meniului lateral) */
 [data-testid="stHeader"] {
     display: flex !important;
     background: transparent !important;
 }
-[data-testid="stToolbar"] {
-    display: flex !important;
-    visibility: visible !important;
-}
+[data-testid="stToolbar"],
+[data-testid="stDecoration"],
 [data-testid="stAppDeployButton"],
-[data-testid="stStatusWidget"],
-[data-testid="stDecoration"] {
+[data-testid="stStatusWidget"] {
     display: none !important;
 }
+
+/* ---------- Butonul de schimbat modul (sus, în dreapta) ---------- */
+div[class*="st-key-comutator_mod"] {
+    position: fixed;
+    top: 0.9rem;
+    right: 1.4rem;
+    z-index: 1000001;
+    width: auto;
+}
+div[class*="st-key-comutator_mod"] button {
+    width: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    justify-content: center;
+}
+div[class*="st-key-comutator_mod"] button p { display: none; }
+
+/* roșul vechi din notificări și rezultate, în violet */
+[data-testid="stSpinner"] { border-left-color: #8B5CF6 !important; }
+div[class*="st-key-cronometru_fix"] { border-left-color: #8B5CF6 !important; }
+.pr-scor-bun { border-color: rgba(139, 92, 246, 0.5) !important; }
 
 [data-baseweb="select"] > div,
 [data-baseweb="input"],
@@ -295,11 +381,7 @@ div[class*="st-key-aca_hero"] {
     line-height: 1.1;
 }
 .aca-nume { color: var(--accent-text); }
-.aca-sub {
-    margin-top: 0.5rem;
-    color: color-mix(in srgb, currentColor 82%, transparent);
-    font-size: 1.05rem;
-}
+.aca-sub { margin-top: 0.5rem; color: var(--txt-2); font-size: 1.05rem; }
 .aca-material { margin-top: 0.6rem; color: var(--muted); font-size: 0.88rem; }
 .aca-robot {
     position: absolute;
@@ -530,7 +612,7 @@ div[class*="st-key-aca_premium"] button {
     padding: 0.9rem 1rem;
     border: 1px solid var(--border);
     border-radius: 14px;
-    background: color-mix(in srgb, currentColor 3%, transparent);
+    background: var(--surface);
 }
 .aca-ti {
     flex-shrink: 0;
@@ -604,12 +686,11 @@ div.st-key-abon_premium_curent button:disabled {
 """
 
 
-def css_tema(mod=None):
-    """CSS-ul temei pentru modul activ (sau pentru cel dat)."""
-    if mod is None:
-        mod = mod_curent()
-    variabile = _VARS_LUMINOS if mod == "light" else _VARS_INTUNECAT
-    return "<style>" + variabile + _BAZA + "</style>"
+def css_tema(mod="dark"):
+    """CSS-ul temei pentru modul dat: 'dark' sau 'light'."""
+    if mod == "light":
+        return "<style>" + _VARS_LUMINOS + _BAZA + _SKIN_LUMINOS + "</style>"
+    return "<style>" + _VARS_INTUNECAT + _BAZA + "</style>"
 
 
 # păstrat ca să nu se strice importurile vechi (varianta întunecată)
