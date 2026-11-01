@@ -127,7 +127,7 @@ div[class*="st-key-avert_salvare"]:has([data-testid="stAlert"]) {
 
 /* robotul din imaginea de referință e făcut pentru fundal închis:
    în modul luminos îl ascundem până avem o variantă luminoasă */
-.aca-robot, .meniu-robot { display: none !important; }
+.meniu-robot { display: none !important; }
 .aca-hero-text { max-width: 75% !important; }
 """
 
