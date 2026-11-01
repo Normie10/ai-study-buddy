@@ -1,19 +1,11 @@
-[theme.light]
-primaryColor = "#6D4AE0"
-backgroundColor = "#F6F3FF"
-secondaryBackgroundColor = "#ECE6FF"
-textColor = "#1E1838"
-
-[theme.light.sidebar]
-backgroundColor = "#FBFAFF"
-secondaryBackgroundColor = "#F1EDFF"
-
-[theme.dark]
+[theme]
+base = "dark"
 primaryColor = "#8B5CF6"
 backgroundColor = "#08070F"
 secondaryBackgroundColor = "#100D20"
 textColor = "#FAFAFA"
+font = "sans serif"
 
-[theme.dark.sidebar]
+[theme.sidebar]
 backgroundColor = "#0B0914"
 secondaryBackgroundColor = "#100D20"
