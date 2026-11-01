@@ -184,7 +184,8 @@ div[class*="st-key-comutator_mod"] button {
     border-radius: 999px !important;
     justify-content: center;
 }
-div[class*="st-key-comutator_mod"] button p { display: none; }
+div[class*="st-key-comutator_mod"] button [data-testid="stMarkdownContainer"] { display: none !important; }
+div[class*="st-key-comutator_mod"] button > div { justify-content: center !important; gap: 0 !important; margin: 0 !important; }
 
 /* roșul vechi din notificări și rezultate, în violet */
 [data-testid="stSpinner"] { border-left-color: #8B5CF6 !important; }
