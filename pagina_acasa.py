@@ -12,6 +12,7 @@ from abonamente import deschide_abonamente
 from baza_date import _client, obiectiv_zilnic, utilizator_curent
 from limbi import limba_ui, nume_tab, t
 from utile_pagini import imagine_uri, mergi
+from comutator_mod import mod_ui
 
 BUC = "Europe/Bucharest"
 
@@ -177,7 +178,11 @@ def _titlu_card(icoana, text):
 def _hero(mat):
     """Bun venit, robotul și cele 6 acțiuni principale."""
     user = utilizator_curent()
-    robot = imagine_uri("robot_hero.png", "mascota.png")
+    robot = (
+        imagine_uri("robot_hero_luminos.png")
+        if mod_ui() == "light"
+        else imagine_uri("robot_hero.png", "mascota.png")
+    )
     img = f'<img class="aca-robot" src="{robot}" alt="">' if robot else ""
     if user is not None and getattr(user, "email", None):
         nume = user.email.split("@")[0]
