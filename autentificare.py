@@ -1,6 +1,9 @@
 """Ecranul de login / creare cont, afișat înainte de restul aplicației.
-Oferă și opțiunea de a continua ca vizitator, fără cont, și fluxul de
-resetare a parolei."""
+Aspectul urmează poza de referință (stânga bun venit cu robotul, dreapta
+cardul de autentificare). Oferă și opțiunea de a continua ca vizitator, fără
+cont, și fluxul de resetare a parolei."""
+
+import html
 
 import streamlit as st
 
@@ -12,7 +15,9 @@ from baza_date import (
     seteaza_sesiune_din_recuperare,
     trimite_email_resetare,
 )
-from limbi import selector_limba, t
+from limbi import limba_ui, selector_limba, t
+from stil_login import CSS_LOGIN
+from utile_pagini import imagine_uri
 
 
 # ------------------------- mesaje de eroare -------------------------
@@ -70,10 +75,23 @@ def arata_eroare_auth(exceptie):
         st.caption(t("avert.detalii", motiv=detaliu))
 
 
-# ------------------------- ecrane -------------------------
+# ------------------------- piese comune -------------------------
+def _t2(ro, en):
+    """Text scurt în limba interfeței (pentru textele noi, fără fișierul de traduceri)."""
+    return ro if limba_ui() == "ro" else en
+
+
+def _forteaza_intunecat():
+    """Pagina de login e făcută doar pentru modul întunecat (ca în poză). Dacă
+    cineva a lăsat modul luminos pornit și s-a delogat, trecem pe întunecat."""
+    if st.session_state.get("mod_ui") == "light":
+        st.session_state["mod_ui"] = "dark"
+        st.rerun()
+
+
 def _antet():
-    """Antetul comun: marca roșie + numele aplicației, apoi selectorul de
-    limbă. HTML-ul rămâne pe UN SINGUR rând, fără linii goale, altfel
+    """Antetul simplu (marca + numele aplicației), folosit de ecranul pentru
+    parola nouă. HTML-ul rămâne pe UN SINGUR rând, fără linii goale, altfel
     Markdown îl strică."""
     html_antet = (
         '<div class="hero"><div class="hero-marca"></div><div>'
@@ -85,72 +103,174 @@ def _antet():
     selector_limba()
 
 
-def ecran_autentificare():
-    _antet()
+def _seteaza_mod(mod):
+    st.session_state["auth_mod"] = mod
 
-    if st.session_state.get("arata_resetare"):
-        _formular_cerere_resetare()
-        return
 
-    st.caption(t("auth_intro"))
-
-    tab_login, tab_inregistrare = st.tabs(
-        [t("auth_tab_login"), t("auth_tab_cont_nou")]
+def _panou_stanga():
+    """Marca, titlul de bun venit și robotul."""
+    logo = imagine_uri("logo_login.png")
+    robot = imagine_uri("robot_login.png")
+    img_logo = f'<img class="log-logo" src="{logo}" alt="">' if logo else ""
+    img_robot = f'<img class="log-robot" src="{robot}" alt="">' if robot else ""
+    sus = html.escape(_t2("Bun venit la", "Welcome to"))
+    st.markdown(
+        '<div class="log-stanga">'
+        f'<div class="log-brand">{img_logo}'
+        '<div class="log-brand-nume">AI Study<br><b>Buddy</b></div></div>'
+        f'<div class="log-titlu">{sus}<br><span>AI Study Buddy!</span></div>'
+        f'<div class="log-sub">{html.escape(t("auth_hero_sub"))}</div>'
+        f"{img_robot}</div>",
+        unsafe_allow_html=True,
     )
 
-    with tab_login:
-        with st.form("form_login"):
-            email = st.text_input(t("auth_email"), key="login_email")
-            parola = st.text_input(
-                t("auth_parola"), type="password", key="login_parola"
-            )
-            trimis = st.form_submit_button(t("auth_tab_login"), type="primary")
-        if trimis:
-            if not email or not parola:
-                st.error(t("auth_completeaza_login"))
-            else:
-                try:
-                    autentifica(email, parola)
-                    st.rerun()
-                except Exception as e_login:
-                    arata_eroare_auth(e_login)
 
+def _capul_cardului(titlu, sub):
+    logo = imagine_uri("logo_login.png")
+    img = f'<img class="log-card-logo" src="{logo}" alt="">' if logo else ""
+    st.markdown(
+        f'<div class="log-card-cap">{img}'
+        f'<div class="log-card-titlu">{html.escape(titlu)}</div>'
+        f'<div class="log-card-sub">{html.escape(sub)}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ------------------------- ecrane -------------------------
+def ecran_autentificare():
+    _forteaza_intunecat()
+    st.markdown(CSS_LOGIN, unsafe_allow_html=True)
+    st.markdown('<div class="log-marker"></div>', unsafe_allow_html=True)
+
+    stanga, dreapta = st.columns([1.05, 1], gap="large")
+    with stanga:
+        _panou_stanga()
+    with dreapta:
+        with st.container(key="log_card"):
+            if st.session_state.get("arata_resetare"):
+                _formular_cerere_resetare()
+            elif st.session_state.get("auth_mod") == "cont_nou":
+                _formular_cont_nou()
+            else:
+                _formular_login()
+            st.divider()
+            selector_limba()
+
+
+def _formular_login():
+    _capul_cardului(
+        _t2("Autentificare", "Sign in"),
+        _t2(
+            "Intră în contul tău pentru a continua",
+            "Sign in to your account to continue",
+        ),
+    )
+    with st.form("form_login"):
+        email = st.text_input(
+            t("auth_email"),
+            key="login_email",
+            placeholder=_t2("Email-ul tău", "Your email"),
+            label_visibility="collapsed",
+        )
+        parola = st.text_input(
+            t("auth_parola"),
+            type="password",
+            key="login_parola",
+            placeholder=_t2("Parola ta", "Your password"),
+            label_visibility="collapsed",
+        )
+        trimis = st.form_submit_button(
+            t("auth_tab_login"), type="primary", use_container_width=True
+        )
+    if trimis:
+        if not email or not parola:
+            st.error(t("auth_completeaza_login"))
+        else:
+            try:
+                autentifica(email, parola)
+                st.rerun()
+            except Exception as e_login:
+                arata_eroare_auth(e_login)
+
+    with st.container(key="log_uitat"):
         if st.button(t("auth_uitat"), key="link_resetare"):
             st.session_state["arata_resetare"] = True
             st.rerun()
 
-    with tab_inregistrare:
-        with st.form("form_inregistrare"):
-            email_n = st.text_input(t("auth_email"), key="reg_email")
-            parola_n = st.text_input(
-                t("auth_parola_min"), type="password", key="reg_parola"
-            )
-            parola_n2 = st.text_input(
-                t("auth_confirma"), type="password", key="reg_parola2"
-            )
-            trimis_n = st.form_submit_button(t("auth_creeaza"), type="primary")
-        if trimis_n:
-            if not email_n or not parola_n:
-                st.error(t("auth_completeaza_toate"))
-            elif parola_n != parola_n2:
-                st.error(t("auth_parole_diferite"))
-            elif len(parola_n) < 6:
-                st.error(t("auth_parola_scurta"))
-            else:
-                try:
-                    cere_confirmare = inregistreaza(email_n, parola_n)
-                    if cere_confirmare:
-                        st.success(t("auth_cont_creat"))
-                    else:
-                        st.rerun()
-                except Exception as e_reg:
-                    arata_eroare_auth(e_reg)
+    st.markdown(
+        f'<div class="log-sau">{html.escape(_t2("sau", "or"))}</div>',
+        unsafe_allow_html=True,
+    )
+    with st.container(key="log_oaspete"):
+        if st.button(
+            t("auth_vizitator_btn"), key="btn_vizitator", use_container_width=True
+        ):
+            intra_ca_vizitator()
+            st.rerun()
+    st.markdown(
+        f'<div class="log-mic">{html.escape(t("auth_vizitator_info"))}</div>',
+        unsafe_allow_html=True,
+    )
 
-    st.divider()
-    st.caption(t("auth_vizitator_info"))
-    if st.button(t("auth_vizitator_btn")):
-        intra_ca_vizitator()
-        st.rerun()
+    with st.container(key="log_alt"):
+        st.button(
+            _t2("Nu ai cont? Creează unul acum →", "No account? Create one now →"),
+            key="catre_cont_nou",
+            on_click=_seteaza_mod,
+            args=("cont_nou",),
+        )
+
+
+def _formular_cont_nou():
+    _capul_cardului(t("auth_tab_cont_nou"), t("auth_intro"))
+    with st.form("form_inregistrare"):
+        email_n = st.text_input(
+            t("auth_email"),
+            key="reg_email",
+            placeholder=_t2("Email-ul tău", "Your email"),
+            label_visibility="collapsed",
+        )
+        parola_n = st.text_input(
+            t("auth_parola_min"),
+            type="password",
+            key="reg_parola",
+            placeholder=t("auth_parola_min"),
+            label_visibility="collapsed",
+        )
+        parola_n2 = st.text_input(
+            t("auth_confirma"),
+            type="password",
+            key="reg_parola2",
+            placeholder=t("auth_confirma"),
+            label_visibility="collapsed",
+        )
+        trimis_n = st.form_submit_button(
+            t("auth_creeaza"), type="primary", use_container_width=True
+        )
+    if trimis_n:
+        if not email_n or not parola_n:
+            st.error(t("auth_completeaza_toate"))
+        elif parola_n != parola_n2:
+            st.error(t("auth_parole_diferite"))
+        elif len(parola_n) < 6:
+            st.error(t("auth_parola_scurta"))
+        else:
+            try:
+                cere_confirmare = inregistreaza(email_n, parola_n)
+                if cere_confirmare:
+                    st.success(t("auth_cont_creat"))
+                else:
+                    st.rerun()
+            except Exception as e_reg:
+                arata_eroare_auth(e_reg)
+
+    with st.container(key="log_alt_login"):
+        st.button(
+            _t2("Ai deja cont? Intră în cont →", "Already have an account? Sign in →"),
+            key="catre_login",
+            on_click=_seteaza_mod,
+            args=("login",),
+        )
 
 
 def _formular_cerere_resetare():
@@ -179,6 +299,8 @@ def ecran_parola_noua(access_token, refresh_token):
     parolă nouă. Rămâne pe acest ecran până apasă explicit butonul de final,
     indiferent de rerun-urile automate declanșate pe parcurs (de exemplu la
     scrierea cookie-ului de sesiune)."""
+    _forteaza_intunecat()
+    st.markdown(CSS_LOGIN, unsafe_allow_html=True)
     _antet()
     st.subheader(t("auth_pn_titlu"))
 
