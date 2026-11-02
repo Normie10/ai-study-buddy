@@ -386,7 +386,7 @@ def _premium():
     robot = imagine_uri("robot_premium.png")
     img = f'<img class="aca-prem-robot" src="{robot}" alt="">' if robot else ""
     avantaje = "".join(
-        f"<li>{html.escape(t(f'abon_av_premium_{n}'))}</li>" for n in (2, 3, 4, 6)
+        f"<li>{html.escape(t(f'abon_av_premium_{n}'))}</li>" for n in (2, 3, 4)
     )
     with st.container(key="aca_premium"):
         st.markdown(
