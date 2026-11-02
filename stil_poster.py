@@ -3,52 +3,62 @@ zona de încărcare, cardurile, apoi activitate / progres / Premium.
 Se adaugă la tema din stil_tema.py și suprascrie regulile Acasă de acolo."""
 
 CSS_POSTER = """
+/* spații mai mici între blocurile paginii Acasă */
+[data-testid="stMainBlockContainer"]:has(.aca-marker) > [data-testid="stVerticalBlock"] {
+    gap: 1.2rem;
+}
+
 /* ----- bun venit: titlu pe două rânduri, robotul în dreapta ----- */
 div[class*="st-key-aca_hero"] {
-    z-index: 2;
-    min-height: 15rem;
-    margin-bottom: -2.4rem;
+    z-index: 0;
+    min-height: 12.2rem;
+    margin-bottom: -1.7rem;
     background: radial-gradient(closest-side at 78% 45%, var(--glow), transparent);
 }
-.aca-hero-text { max-width: 55% !important; min-height: 0 !important; padding-top: 1.6rem; }
-.aca-titlu { font-size: clamp(2.2rem, 4vw, 3.5rem); line-height: 1.08; }
-.aca-robot { right: 7% !important; top: 0 !important; width: 250px !important; }
+.aca-hero-text { max-width: 55% !important; min-height: 0 !important; padding-top: 0.6rem; }
+.aca-titlu { font-size: clamp(1.9rem, 3.1vw, 2.9rem); line-height: 1.08; }
+.aca-sub { font-size: 1rem; }
+.aca-robot { right: 9% !important; top: 0 !important; width: 215px !important; }
 
-/* ----- zona de încărcare ----- */
+/* ----- zona de încărcare: compactă, stă peste marginea de jos a robotului ----- */
 div[class*="st-key-aca_upload"] {
     position: relative;
     z-index: 1;
-    padding: 2.6rem 1.5rem 1.8rem;
+    padding: 1.3rem 1.5rem 1.2rem;
     border: 2px dashed rgba(139, 92, 246, 0.50);
-    border-radius: 22px;
-    background: var(--panou);
+    border-radius: 20px;
+    background: var(--camp-bg);
     box-shadow: var(--sombra);
     text-align: center;
     animation: urca 0.5s ease 0.05s backwards;
 }
-.aca-up { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; margin-bottom: 0.9rem; }
+.aca-up { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; margin-bottom: 0.6rem; }
 .aca-up-ic {
     display: inline-grid;
     place-items: center;
-    width: 60px;
-    height: 60px;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
     background: rgba(139, 92, 246, 0.14);
 }
-.aca-up-t { margin-top: 0.4rem; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
-.aca-up-s { color: var(--muted); font-size: 0.95rem; }
+.aca-up-t { margin-top: 0.2rem; font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; }
+.aca-up-s { color: var(--muted); font-size: 0.88rem; }
 div[class*="st-key-aca_upload"] button {
-    min-height: 3.1rem;
+    min-height: 2.8rem;
     border-radius: 999px !important;
-    font-size: 1.02rem;
+    font-size: 1rem;
 }
 
-/* ----- cardurile: săgeată rotundă în colț ----- */
+/* ----- cardurile: mai joase, cu săgeată rotundă în colț ----- */
+div[class*="st-key-aca_card_"] {
+    min-height: 7.4rem;
+    padding: 0.85rem 0.85rem 1rem;
+}
 div[class*="st-key-aca_card_"]::after {
     content: "→";
     position: absolute;
     right: 0.75rem;
-    bottom: 0.75rem;
+    bottom: 0.7rem;
     display: grid;
     place-items: center;
     width: 26px;
@@ -60,12 +70,13 @@ div[class*="st-key-aca_card_"]::after {
     font-size: 0.85rem;
     pointer-events: none;
 }
-div[class*="st-key-aca_card_"] { min-height: 9.2rem; padding-bottom: 2.6rem; }
+.aca-ct { margin-top: 0.5rem; }
+.aca-cd { min-height: 1.4em; padding-right: 2.2rem; }
 
 /* ----- rândul de jos: activitate, progres, Premium ----- */
 div[class*="st-key-aca_recent"],
 div[class*="st-key-aca_progres"],
-div[class*="st-key-aca_premium"] { min-height: 18.5rem; }
+div[class*="st-key-aca_premium"] { min-height: 16.5rem; }
 
 .aca-pg { display: flex; align-items: center; gap: 1.1rem; margin-top: 0.8rem; }
 .aca-pg .aca-inel { width: 130px; height: 130px; margin: 0; flex-shrink: 0; }
