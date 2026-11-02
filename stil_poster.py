@@ -73,10 +73,10 @@ div[class*="st-key-aca_card_"]::after {
 .aca-ct { margin-top: 0.5rem; }
 .aca-cd { min-height: 1.4em; padding-right: 2.2rem; }
 
-/* ----- rândul de jos: activitate, progres, Premium ----- */
+/* ----- rândul de jos: activitate, progres, Premium (aceeași înălțime) ----- */
 div[class*="st-key-aca_recent"],
 div[class*="st-key-aca_progres"],
-div[class*="st-key-aca_premium"] { min-height: 16.5rem; }
+div[class*="st-key-aca_premium"] { min-height: 19.5rem; }
 
 .aca-pg { display: flex; align-items: center; gap: 1.1rem; margin-top: 0.8rem; }
 .aca-pg .aca-inel { width: 130px; height: 130px; margin: 0; flex-shrink: 0; }
@@ -97,11 +97,12 @@ div[class*="st-key-aca_premium"] { min-height: 16.5rem; }
 .aca-pg-m { font-size: 0.82rem; line-height: 1.35; font-weight: 600; }
 div[class*="st-key-aca_progres"] [data-testid="stButton"] { margin-top: 0.9rem; }
 
-/* bannerul Premium, mai îngust (stă pe același rând cu celelalte două) */
+/* bannerul Premium: titlul pe toată lățimea, lista mai îngustă, robotul jos în dreapta */
 div[class*="st-key-aca_premium"] { padding: 1.3rem 1.4rem; }
-.aca-pb { max-width: 62% !important; }
+.aca-pb { max-width: 100% !important; }
 .aca-pb-t { font-size: 1.1rem; }
 .aca-pb-s { font-size: 0.85rem; }
+.aca-pb-l { max-width: 62%; }
 .aca-pb-l li { font-size: 0.82rem; }
 .aca-prem-robot { width: 165px !important; right: 0.3rem !important; }
 
@@ -109,6 +110,6 @@ div[class*="st-key-aca_premium"] { padding: 1.3rem 1.4rem; }
     div[class*="st-key-aca_hero"] { min-height: 0; margin-bottom: 0; }
     .aca-hero-text { max-width: 100% !important; }
     .aca-pg { flex-wrap: wrap; }
-    .aca-pb { max-width: 100% !important; }
+    .aca-pb-l { max-width: 100%; }
 }
 """
