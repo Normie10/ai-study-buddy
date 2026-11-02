@@ -686,12 +686,14 @@ div.st-key-abon_premium_curent button:disabled {
 }
 """
 
+from stil_poster import CSS_POSTER  # noqa: E402
+
 
 def css_tema(mod="dark"):
     """CSS-ul temei pentru modul dat: 'dark' sau 'light'."""
     if mod == "light":
-        return "<style>" + _VARS_LUMINOS + _BAZA + _SKIN_LUMINOS + "</style>"
-    return "<style>" + _VARS_INTUNECAT + _BAZA + "</style>"
+        return "<style>" + _VARS_LUMINOS + _BAZA + _SKIN_LUMINOS + CSS_POSTER + "</style>"
+    return "<style>" + _VARS_INTUNECAT + _BAZA + CSS_POSTER + "</style>"
 
 
 # păstrat ca să nu se strice importurile vechi (varianta întunecată)
