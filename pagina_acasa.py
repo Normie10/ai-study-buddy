@@ -1,6 +1,6 @@
-"""Pagina Acasă, aranjată ca în modelul ales: bun venit cu robotul și cele 6
-acțiuni principale, progres, activitate recentă, Premium, statistici și
-obiectivul de azi."""
+"""Pagina Acasă, aranjată ca în modelul ales: bun venit cu robotul, zona de
+încărcare, cele 6 acțiuni principale, apoi activitate recentă, progres și
+Premium, iar dedesubt statistici și obiectivul de azi."""
 
 import datetime
 import html
@@ -10,9 +10,9 @@ import streamlit as st
 
 from abonamente import deschide_abonamente
 from baza_date import _client, obiectiv_zilnic, utilizator_curent
+from comutator_mod import mod_ui
 from limbi import limba_ui, nume_tab, t
 from utile_pagini import imagine_uri, mergi
-from comutator_mod import mod_ui
 
 BUC = "Europe/Bucharest"
 
@@ -21,6 +21,7 @@ IC = {
     "quiz": '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.8"/><path d="M12 17h.01"/>',
     "clip": '<rect x="6" y="4.5" width="12" height="16" rx="2"/><path d="M9 4.5V3h6v1.5M9 10h6M9 14h6"/>',
     "star": '<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z" fill="#FFFFFF"/>',
+    "stea": '<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/>',
     "cards": '<rect x="4" y="7" width="13" height="11" rx="2"/><path d="M8 4h11a1 1 0 0 1 1 1v9M8 11h5"/>',
     "doc": '<path d="M7 3.5h7l4 4V20.5H7z"/><path d="M14 3.5V8h4M9.5 12h5M9.5 15.5h5"/>',
     "chat": '<path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-7l-4 3.5V16H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><path d="M10.3 9.3a1.8 1.8 0 1 1 2.6 1.6c-.6.3-.9.7-.9 1.3M12 13.8h.01"/>',
@@ -32,6 +33,7 @@ IC = {
     "cal": '<rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8 3.5v3M16 3.5v3"/>',
     "crown": '<path d="M3.5 18.5L5 8l4.5 4L12 6l2.5 6L19 8l1.5 10.5z" fill="#F5B83D" stroke="#F5B83D"/>',
     "trofeu": '<path d="M8 4h8v5a4 4 0 0 1-8 0z" fill="#F5B83D" stroke="#F5B83D"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4" stroke="#F5B83D"/><path d="M12 13v4M8.5 19h7" stroke="#F5B83D"/>',
+    "upload": '<path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1-.5 7.97"/><path d="M12 12v8M9 15l3-3 3 3"/>',
 }
 
 
@@ -41,6 +43,11 @@ def _svg(cheie, tam=22, culoare="#FFFFFF", latime=1.8):
         f'stroke="{culoare}" stroke-width="{latime}" stroke-linecap="round" '
         f'stroke-linejoin="round">{IC[cheie]}</svg>'
     )
+
+
+def _t2(ro, en):
+    """Text scurt în limba interfeței (pentru textele noi, fără fișierul de traduceri)."""
+    return ro if limba_ui() == "ro" else en
 
 
 # (nume secțiune, cod, iconiță, culoare sus, culoare jos)
@@ -175,8 +182,8 @@ def _titlu_card(icoana, text):
 
 
 # ------------------------- piese -------------------------
-def _hero(mat):
-    """Bun venit, robotul și cele 6 acțiuni principale."""
+def _hero():
+    """Bun venit pe două rânduri, cu robotul în dreapta."""
     user = utilizator_curent()
     robot = (
         imagine_uri("robot_hero_luminos.png")
@@ -187,17 +194,10 @@ def _hero(mat):
     if user is not None and getattr(user, "email", None):
         nume = user.email.split("@")[0]
         nume = nume[:1].upper() + nume[1:]
-        salut = html.escape(t("ac.salut_inceput"))
-        titlu = f'{salut}<span class="aca-nume">{html.escape(nume)}</span>!'
+        salut = html.escape(t("ac.salut_inceput")).rstrip()
+        titlu = f'{salut}<br><span class="aca-nume">{html.escape(nume)}</span>!'
     else:
         titlu = html.escape(t("ac.salut_viz"))
-
-    if mat is not None:
-        nume_mat = t("material.text_lipit") if mat["nume"] == "Text lipit" else mat["nume"]
-        linie = t("ac.material_activ", nume=nume_mat)
-    else:
-        linie = t("ac.hero.fara_material")
-    linie = html.escape(linie).replace("$", "&#36;")
     sub = html.escape(t("ac.sub"))
 
     with st.container(key="aca_hero"):
@@ -205,44 +205,77 @@ def _hero(mat):
             '<div class="aca-hero-text">'
             f'<div class="aca-titlu">{titlu}</div>'
             f'<div class="aca-sub">{sub}</div>'
-            f'<div class="aca-material">{linie}</div>'
             f"</div>{img}",
             unsafe_allow_html=True,
         )
-        if mat is None:
-            col_buton, _liber = st.columns([1.2, 3])
-            col_buton.button(
-                t("ac.alege_material"),
-                key="aca_h_doc",
-                icon=":material/folder_open:",
-                on_click=mergi,
-                args=("documente",),
-                type="primary",
-                use_container_width=True,
+
+
+def _zona_incarcare(mat):
+    """Caseta mare cu margine punctată: alegerea materialului (duce la Documente)."""
+    if mat is not None:
+        nume_mat = t("material.text_lipit") if mat["nume"] == "Text lipit" else mat["nume"]
+        titlu = html.escape(nume_mat).replace("$", "&#36;")
+        sub = html.escape(
+            _t2(
+                "Material ales. Poți începe un quiz, un examen sau flashcarduri.",
+                "Material selected. You can start a quiz, an exam or flashcards.",
             )
-        with st.container(key="aca_cards"):
-            coloane = st.columns(6, gap="small")
-            for col, (nume_s, cod, ic, c1, c2) in zip(coloane, CARDURI):
-                titlu_c = html.escape(nume_tab(nume_s))
-                cheie_desc = f"ac.c.{cod}.d"
-                desc = html.escape(t(cheie_desc))
-                with col:
-                    with st.container(key=f"aca_card_{cod}"):
-                        st.markdown(
-                            '<div class="aca-c">'
-                            f'<span class="aca-ci" style="background:linear-gradient(145deg,{c1},{c2})">'
-                            f"{_svg(ic, 22)}</span>"
-                            f'<div class="aca-ct">{titlu_c}</div>'
-                            f'<div class="aca-cd">{desc}</div></div>',
-                            unsafe_allow_html=True,
-                        )
-                        # butonul acoperă tot cardul (invizibil, vezi stil_tema.py)
-                        st.button(
-                            nume_tab(nume_s),
-                            key=f"aca_cb_{cod}",
-                            on_click=mergi,
-                            args=(nume_s,),
-                        )
+        )
+        eticheta = t("ac.schimba")
+    else:
+        titlu = html.escape(_t2("Încarcă materialele tale", "Upload your materials"))
+        sub = html.escape(
+            _t2(
+                "PDF, Word, text sau notițe lipite: orice material de studiu",
+                "PDF, Word, text or pasted notes: any study material",
+            )
+        )
+        eticheta = t("ac.alege_material")
+
+    with st.container(key="aca_upload"):
+        st.markdown(
+            '<div class="aca-up">'
+            f'<span class="aca-up-ic">{_svg("upload", 34, "#8B5CF6", 1.7)}</span>'
+            f'<div class="aca-up-t">{titlu}</div>'
+            f'<div class="aca-up-s">{sub}</div></div>',
+            unsafe_allow_html=True,
+        )
+        _stanga, mijloc, _dreapta = st.columns([1.3, 1, 1.3])
+        mijloc.button(
+            eticheta,
+            key="aca_alege_fisiere",
+            icon=":material/upload:",
+            on_click=mergi,
+            args=("documente",),
+            type="primary",
+            use_container_width=True,
+        )
+
+
+def _carduri():
+    """Cele 6 acțiuni principale, pe un singur rând."""
+    with st.container(key="aca_cards"):
+        coloane = st.columns(6, gap="small")
+        for col, (nume_s, cod, ic, c1, c2) in zip(coloane, CARDURI):
+            titlu_c = html.escape(nume_tab(nume_s))
+            desc = html.escape(t(f"ac.c.{cod}.d"))
+            with col:
+                with st.container(key=f"aca_card_{cod}"):
+                    st.markdown(
+                        '<div class="aca-c">'
+                        f'<span class="aca-ci" style="background:linear-gradient(145deg,{c1},{c2})">'
+                        f"{_svg(ic, 22)}</span>"
+                        f'<div class="aca-ct">{titlu_c}</div>'
+                        f'<div class="aca-cd">{desc}</div></div>',
+                        unsafe_allow_html=True,
+                    )
+                    # butonul acoperă tot cardul (invizibil, vezi stil_tema.py)
+                    st.button(
+                        nume_tab(nume_s),
+                        key=f"aca_cb_{cod}",
+                        on_click=mergi,
+                        args=(nume_s,),
+                    )
 
 
 def _progres(toate, mat):
@@ -259,13 +292,40 @@ def _progres(toate, mat):
     else:
         mesaj = t("ac.mesaj_incurajare")
 
+    serie = _serie(toate)
+    text_serie = t("ac.zi_unu") if serie == 1 else t("ac.zile", n=serie)
+
+    def rand(icoana, continut):
+        return (
+            f'<div class="aca-pg-r"><span class="aca-pg-ic">{icoana}</span>'
+            f"<div>{continut}</div></div>"
+        )
+
+    lista = (
+        rand(
+            _svg("stea", 18, "#8B5CF6", 2),
+            f'<div class="aca-pg-m">{html.escape(mesaj)}</div>',
+        )
+        + rand(
+            _svg("check", 18, "#8B5CF6", 2.2),
+            f'<div class="aca-pg-v">{len(toate)}</div>'
+            f'<div class="aca-pg-l">{html.escape(t("ac.stat.activitati"))}</div>',
+        )
+        + rand(
+            _svg("bolt", 18, "#8B5CF6", 2),
+            f'<div class="aca-pg-v">{html.escape(text_serie)}</div>'
+            f'<div class="aca-pg-l">{html.escape(t("ac.stat.serie"))}</div>',
+        )
+    )
+
     with st.container(key="aca_progres"):
         st.markdown(
             _titlu_card("trend", t("ac.progres"))
-            + f'<div class="aca-inel" style="--p:{medie_int}"><div class="aca-inel-in">'
+            + '<div class="aca-pg">'
+            f'<div class="aca-inel" style="--p:{medie_int}"><div class="aca-inel-in">'
             f"<b>{medie_int}%</b><span>{html.escape(t('ac.rata'))}</span>"
             "</div></div>"
-            f'<div class="aca-mesaj aca-centru">{html.escape(mesaj)}</div>',
+            f'<div class="aca-pg-lista">{lista}</div></div>',
             unsafe_allow_html=True,
         )
         st.button(
@@ -450,20 +510,20 @@ def afiseaza_acasa(mat=None):
     st.markdown('<div class="aca-marker"></div>', unsafe_allow_html=True)
     toate = _randuri()
 
-    stanga, dreapta = st.columns([2.6, 1], gap="large")
-    with stanga:
-        _hero(mat)
-    with dreapta:
-        _progres(toate, mat)
+    _hero()
+    _zona_incarcare(mat)
+    _carduri()
 
-    r1, r2 = st.columns([1, 1.35], gap="large")
+    r1, r2, r3 = st.columns([1.15, 1.1, 1.3], gap="medium")
     with r1:
         _recent(toate)
     with r2:
+        _progres(toate, mat)
+    with r3:
         _premium()
 
-    r3, r4 = st.columns([2.3, 1], gap="large")
-    with r3:
-        _stats(toate)
+    r4, r5 = st.columns([2.3, 1], gap="large")
     with r4:
+        _stats(toate)
+    with r5:
         _obiectiv(toate, mat)
