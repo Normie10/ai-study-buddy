@@ -162,11 +162,25 @@ _BAZA = """
     display: flex !important;
     background: transparent !important;
 }
-[data-testid="stToolbar"],
 [data-testid="stDecoration"],
 [data-testid="stAppDeployButton"],
 [data-testid="stStatusWidget"] {
     display: none !important;
+}
+/* bara din dreapta (Share, meniul cu trei puncte etc.) se ascunde, dar butonul
+   care redeschide meniul lateral trebuie să rămână vizibil */
+[data-testid="stToolbar"] { visibility: hidden !important; }
+[data-testid="stExpandSidebarButton"],
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] { visibility: visible !important; }
+[data-testid="stExpandSidebarButton"] button,
+[data-testid="collapsedControl"] button {
+    color: var(--txt) !important;
+    background: var(--panou) !important;
+    border: 1px solid var(--border-hover) !important;
+    border-radius: 10px !important;
+}
+[data-testid="stSidebarCollapseButton"] button { color: var(--txt) !important; }
 }
 
 /* ---------- Butonul de schimbat modul (sus, în dreapta) ---------- */
