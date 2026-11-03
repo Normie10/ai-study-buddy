@@ -117,7 +117,6 @@ st.markdown(CSS_APP, unsafe_allow_html=True)
 st.markdown(CSS_NOTIFICARI, unsafe_allow_html=True)
 st.markdown(CSS_UI, unsafe_allow_html=True)
 st.markdown(css_tema(mod_ui()), unsafe_allow_html=True)
-deseneaza_comutator()
 
 # Valorile interne ale alegerii sursei (nu se traduc: logica se bazează pe ele)
 SURSA_FISIER = "Încarcă un fișier"
