@@ -194,7 +194,7 @@ div[class*="st-key-log_alt"] button { font-size: 1rem; }
 div[class*="st-key-log_uitat"] button { font-size: 0.9rem; }
 div[class*="st-key-log_alt"], div[class*="st-key-log_uitat"] {
     display: flex;
-    justify-content: center;
+    align-items: center;
 }
 div[class*="st-key-log_card"] [data-testid="stRadio"] label p { font-size: 0.88rem; }
 
