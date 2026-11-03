@@ -1,11 +1,13 @@
 """Meniul din stânga: logo, profil, Acasă, categoriile pliabile de secțiuni,
-Documente, nota despre Premium și robotul de jos."""
+Documente, butonul de mod luminos / întunecat, nota despre Premium și
+robotul de jos."""
 
 import html
 
 import streamlit as st
 
 from abonamente import deschide_abonamente
+from comutator_mod import deseneaza_comutator
 from limbi import nume_tab, t
 from navigare import GRUPE, ICONITE
 from utile_pagini import imagine_uri, mergi
@@ -80,6 +82,7 @@ def deseneaza_meniu(sectiuni, curenta, deseneaza_profil):
                 "documente",
                 curenta,
             )
+            deseneaza_comutator()
 
         with st.container(key="meniu_premium"):
             titlu = html.escape(t("ac.prem.titlu"))
